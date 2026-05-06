@@ -1,0 +1,44 @@
+# Build directories
+build/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+Makefile.cmake
+Makefile2
+install_manifest.txt
+CMakeDirectoryInformation.cmake
+
+# Visual Studio / IDE
+.vscode/
+.idea/
+*.sln
+*.VC.db
+*.VC.opendb
+
+# Compiled object files
+*.o
+*.obj
+*.lo
+*.la
+*.al
+
+# Libraries
+*.lib
+*.a
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Misc
+*.log
+*.tmp
+*.swp
+*.DS_Store
