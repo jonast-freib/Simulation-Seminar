@@ -4,14 +4,25 @@
 #include "Renderer.h"
 
 int main() {
-    Renderer renderer(1280, 720, "SPH Fluid Solver");
+    const int particlesX = 300;
+    const int particlesY = 200;
+    const float particleRadius = 4.f;
+    const float spacing = particleRadius * 2.4f;
+    const float margin = 20.f;
 
-    // Create some particles
+    const unsigned int windowWidth = 1800;
+    const unsigned int windowHeight = 1000;
+
+    Renderer renderer(windowWidth, windowHeight, "SPH Fluid Solver", particleRadius);
+
     std::vector<Particle> particles;
-    for (int i = 0; i < 100; ++i) {
-        for (int j = 0; j < 100; ++j) {
-            Vector2D pos(200.0 + i * 4, 100.0 + j * 4);
-            particles.emplace_back(pos, 1.0);
+    particles.reserve(particlesX * particlesY);
+
+    for (int row = 0; row < particlesY; ++row) {
+        for (int col = 0; col < particlesX; ++col) {
+            const float x = margin + col * spacing;
+            const float y = margin + row * spacing;
+            particles.emplace_back(Vector2D(x, y), 1.0);
         }
     }
 
@@ -19,23 +30,22 @@ int main() {
     while (renderer.isOpen()) {
         renderer.handleEvents();
 
-        // Update particle positions (simple gravity for now)
         for (auto& particle : particles) {
-            particle.velocity.y += 0.1; // gravity
+            particle.velocity.y += 0.1f;
+            particle.velocity.x += (rand() % 3 - 1) * 0.05f;
             particle.position = particle.position + particle.velocity;
 
-            // Bounce off walls
-            if (particle.position.y > 700) {
-                particle.position.y = 700;
-                particle.velocity.y *= -0.8; // damping
+            if (particle.position.y > static_cast<float>(windowHeight)) {
+                particle.position.y = static_cast<float>(windowHeight);
+                particle.velocity.y *= -0.8f;
             }
-            if (particle.position.x < 0) {
-                particle.position.x = 0;
-                particle.velocity.x *= -0.8;
+            if (particle.position.x < 0.f) {
+                particle.position.x = 0.f;
+                particle.velocity.x *= -0.8f;
             }
-            if (particle.position.x > 1280) {
-                particle.position.x = 1280;
-                particle.velocity.x *= -0.8;
+            if (particle.position.x > static_cast<float>(windowWidth)) {
+                particle.position.x = static_cast<float>(windowWidth);
+                particle.velocity.x *= -0.8f;
             }
         }
 
