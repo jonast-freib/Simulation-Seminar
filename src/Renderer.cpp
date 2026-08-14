@@ -2,6 +2,8 @@
 #include <cmath>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <cstdint>
 
 Renderer::Renderer(unsigned int width, unsigned int height, const std::string& title, float particleRadius)
     : window(sf::VideoMode(sf::Vector2u(width, height)), title)
@@ -151,11 +153,36 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     const float texWidth = static_cast<float>(particleTexture.getSize().x);
     const float texHeight = static_cast<float>(particleTexture.getSize().y);
 
+    // determine pressure bounds for coloring
+    double minP = std::numeric_limits<double>::infinity();
+    double maxP = -std::numeric_limits<double>::infinity();
+    for (const auto& p : particles) {
+        minP = std::min(minP, p.pressure);
+        maxP = std::max(maxP, p.pressure);
+    }
+    if (minP == std::numeric_limits<double>::infinity()) {
+        minP = 0.0; maxP = 1.0;
+    }
+
+    auto pressureToColor = [&](double pressure) -> sf::Color {
+        double n = 0.0;
+        if (maxP > minP) n = (pressure - minP) / (maxP - minP);
+        n = std::max(0.0, std::min(1.0, n));
+        // simple blue -> cyan -> green -> yellow -> red mapping
+        const double r = std::min(1.0, std::max(0.0, 1.5 * n));
+        const double g = std::max(0.0, 1.0 - std::abs(n - 0.5) * 2.0);
+        const double b = std::min(1.0, std::max(0.0, 1.5 * (1.0 - n)));
+        const uint8_t R = static_cast<uint8_t>(std::round(r * 255.0));
+        const uint8_t Gc = static_cast<uint8_t>(std::round(g * 255.0));
+        const uint8_t B = static_cast<uint8_t>(std::round(b * 255.0));
+        return sf::Color(R, Gc, B, 220);
+    };
+
     for (std::size_t i = 0; i < particles.size(); ++i) {
         const auto& particle = particles[i];
         const float cx = static_cast<float>(particle.position.x);
         const float cy = static_cast<float>(particle.position.y);
-        const sf::Color color = particle.color;
+        const sf::Color color = pressureToColor(static_cast<float>(particle.pressure));
         const std::size_t baseIndex = i * 6;
 
         particleVertices[baseIndex + 0].position = {cx - halfSize, cy - halfSize};

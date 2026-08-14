@@ -15,17 +15,7 @@ struct Particle {
     double pressure;
     bool fixed;
     sf::Color color;
-
     Particle(Vector2D pos = Vector2D(), double m = 2.5, bool fixedParticle = false)
         : position(pos), velocity(0, 0), acceleration(0, 0),
-          mass(m), density(0.0), pressure(0.0), fixed(fixedParticle) {
-        if (fixed) {
-            color = sf::Color(150, 150, 150, 255);
-        } else {
-            static std::random_device rd;
-            static std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, 255);
-            color = sf::Color(dis(gen), dis(gen), dis(gen), 255);
-        }
-    }
+          mass(m), density(0.0), pressure(0.0), fixed(fixedParticle) {}
 };

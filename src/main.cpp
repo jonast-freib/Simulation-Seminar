@@ -8,10 +8,10 @@
 int main() {
     const int particlesX = 10;
     const int particlesY = 10;
-    const float particleRadius = 6.f; // visual radius only, physics uses smoothing radius
+    const float particleRadius = 4.f; // visual radius only, physics uses smoothing radius
 
-    const unsigned int windowWidth = 1800;
-    const unsigned int windowHeight = 1000;
+    const unsigned int windowWidth = 1700;
+    const unsigned int windowHeight = 900;
 
     Renderer renderer(windowWidth, windowHeight, "SPH Fluid Solver", particleRadius);
     // Use a tuned SPH parameter set for stable motion in 2D.
@@ -30,18 +30,15 @@ int main() {
     sliderY += sliderGap;
     renderer.addSlider("viscosity", 0.f, 300.f, 200.f, sliderX, sliderY);
     sliderY += sliderGap;
-    renderer.addSlider("smoothingRadius", 10.f, 40.f, 16.f, sliderX, sliderY);
+    renderer.addSlider("smoothingRadius", 10.f, 30.f, 13.f, sliderX, sliderY);
     sliderY += sliderGap;
-    renderer.addSlider("timestep", 0.0001f, 0.01f, 0.0007f, sliderX, sliderY);
+    renderer.addSlider("timestep", 0.0001f, 0.1f, 0.0007f, sliderX, sliderY);
     sliderY += sliderGap;
     renderer.addSlider("gravity", 0.f, 20.f, 10.f, sliderX, sliderY);
 
     // Add reset and preset buttons
     const float buttonX = sliderX + 240.f;
     renderer.addButton("Reset", buttonX, 50.f, 80.f, 28.f);
-    renderer.addButton("Drop Block", buttonX, 90.f, 100.f, 28.f);
-    renderer.addButton("Particle Cloud", buttonX, 130.f, 120.f, 28.f);
-    renderer.addButton("High Gravity", buttonX, 170.f, 100.f, 28.f);
 
     std::vector<Particle> particles;
     particles.reserve(particlesX * particlesY + 200);
@@ -78,7 +75,7 @@ int main() {
     const float boundaryLeft = windowWidth * 0.5f;
 
     auto makeDropOnBlock = [&]() {
-        applyPresetSliders(300.f, 2000.f, 200.f, 16.f, 0.0007f, 10.f);
+        applyPresetSliders(300.f, 2000.f, 200.f, 10.f, 0.05f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
         const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
@@ -98,12 +95,12 @@ int main() {
     };
 
     auto makeParticleCloud = [&]() {
-        applyPresetSliders(300.f, 2000.f, 200.f, 16.f, 0.0007f, 10.f);
+        applyPresetSliders(300.f, 2000.f, 200.f, 12.f, 0.0007f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
         const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
-        const int cloudCols = 14;
-        const int cloudRows = 8;
+        const int cloudCols = 30;
+        const int cloudRows = 30;
         const float cloudLeft = windowWidth * 0.5f - (cloudCols - 1) * 0.5f * physicalSpacing;
         const float cloudTop = 120.f;
         for (int row = 0; row < cloudRows; ++row) {
@@ -113,6 +110,48 @@ int main() {
                 particles.emplace_back(Vector2D(x, y), particleMass, false);
             }
         }
+        saveInitialPositions();
+    };
+
+    auto makeWalls = [&]() {
+        applyPresetSliders(400.f, 4000.f, 250.f, 16.f, 0.004f, 10.f);
+        particles.clear();
+
+        const double particleMass = sphSolver.getParticleMass();
+        const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
+        const int wallDepth = 3;
+        const int wallHeight = 30;
+        const float wallTop = 800.f;
+        const float leftWallX = windowWidth * 0.35f;
+        const float rightWallX = windowWidth * 0.65f;
+
+        auto addWall = [&](float wallCenterX) {
+            for (int depth = 0; depth < wallDepth; ++depth) {
+                for (int i = 0; i < wallHeight; ++i) {
+                    const float x = wallCenterX + (depth - (wallDepth - 1) * 0.5f) * physicalSpacing - 2.f;
+                    const float y = wallTop + i * physicalSpacing - 2.f;
+                    particles.emplace_back(Vector2D(x, y), particleMass, true);
+                }
+            }
+        };
+
+        addWall(leftWallX);
+        addWall(rightWallX);
+
+        const int cloudCols = 4;
+        const int cloudRows = 4;
+        const float cloudLeft = windowWidth * 0.5f - (cloudCols - 1) * 0.5f * physicalSpacing;
+        const float cloudTop = 700.f;
+
+        for (int row = 0; row < cloudRows; ++row) {
+            for (int col = 0; col < cloudCols; ++col) {
+                const float x = cloudLeft + col * physicalSpacing + (row % 2 ? physicalSpacing * 0.5f : 0.f);
+                const float y = cloudTop + row * physicalSpacing;
+                particles.emplace_back(Vector2D(x, y), particleMass, false);
+                
+            }
+        }
+
         saveInitialPositions();
     };
 
@@ -136,23 +175,31 @@ int main() {
         saveInitialPositions();
     };
 
-    makeDropOnBlock();
+    //makeDropOnBlock();
+    makeWalls();
+    
 
     // Main loop
+    int frameCounter = 0;
     while (renderer.isOpen()) {
         renderer.handleEvents();
 
-        // Read slider values and apply to solver
-        sphSolver.setRestDensity(static_cast<double>(renderer.getSliderValue(0)));
-        sphSolver.setGasConstant(static_cast<double>(renderer.getSliderValue(1)));
-        sphSolver.setViscosity(static_cast<double>(renderer.getSliderValue(2)));
-        sphSolver.setSmoothingRadius(static_cast<double>(renderer.getSliderValue(3)));
-        sphSolver.setGravity(Vector2D(0.0, static_cast<double>(renderer.getSliderValue(5))));
-
-        const double currentParticleMass = sphSolver.getParticleMass();
-        for (auto& particle : particles) {
+        ++frameCounter;
+        if (frameCounter >= 60) {
+            // Read slider values and apply to solver at a reduced cadence.
+            sphSolver.setRestDensity(static_cast<double>(renderer.getSliderValue(0)));
+            sphSolver.setGasConstant(static_cast<double>(renderer.getSliderValue(1)));
+            sphSolver.setViscosity(static_cast<double>(renderer.getSliderValue(2)));
+            sphSolver.setSmoothingRadius(static_cast<double>(renderer.getSliderValue(3)));
+            sphSolver.setGravity(Vector2D(0.0, static_cast<double>(renderer.getSliderValue(5))));
+            const double currentParticleMass = sphSolver.getParticleMass();
+            for (auto& particle : particles) {
             particle.mass = currentParticleMass;
+            }
+            frameCounter = 0;
         }
+
+        
 
         // Handle Reset and preset buttons
         if (renderer.consumeButtonPress(0)) {
@@ -162,18 +209,13 @@ int main() {
                 particles[i].acceleration = Vector2D(0.0, 0.0);
             }
         }
-        if (renderer.consumeButtonPress(1)) {
-            makeDropOnBlock();
-        }
-        if (renderer.consumeButtonPress(2)) {
-            makeParticleCloud();
-        }
-        if (renderer.consumeButtonPress(3)) {
-            makeHighGravityImpact();
-        }
 
         const double dt = static_cast<double>(renderer.getSliderValue(4));
-        sphSolver.step(particles, dt);
+        constexpr int substeps = 10;
+        const double substepDt = dt / static_cast<double>(substeps);
+        for (int i = 0; i < substeps; ++i) {
+            sphSolver.step(particles, substepDt);
+        }
 
         renderer.clear();
         renderer.drawParticles(particles);
