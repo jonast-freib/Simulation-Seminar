@@ -6,7 +6,7 @@
 
 class Renderer {
 public:
-    Renderer(unsigned int width, unsigned int height, const std::string& title, float particleRadius = 2.f);
+    Renderer(unsigned int width, unsigned int height, const std::string& title, float particleRadius = 1.f);
     bool isOpen() const;
     void handleEvents();
     void clear();

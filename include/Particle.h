@@ -14,8 +14,10 @@ struct Particle {
     double density;
     double pressure;
     bool fixed;
+    bool cflViolated;
     sf::Color color;
+
     Particle(Vector2D pos = Vector2D(), double m = 2.5, bool fixedParticle = false)
         : position(pos), velocity(0, 0), acceleration(0, 0),
-          mass(m), density(0.0), pressure(0.0), fixed(fixedParticle) {}
+          mass(m), density(0.0), pressure(0.0), fixed(fixedParticle), cflViolated(false) {}
 };

@@ -53,7 +53,7 @@ int main() {
     };
 
     auto getPhysicalSpacing = [&](double smoothingRadius) {
-        return static_cast<float>(smoothingRadius * 0.75);
+        return static_cast<float>(smoothingRadius * 0.7);
     };
 
     auto applyPresetSliders = [&](float restDensity, float gasConstant, float viscosity, float smoothingRadius, float timestep, float gravity) {
@@ -99,10 +99,10 @@ int main() {
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
         const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
-        const int cloudCols = 30;
-        const int cloudRows = 30;
+        const int cloudCols = 5;
+        const int cloudRows = 5;
         const float cloudLeft = windowWidth * 0.5f - (cloudCols - 1) * 0.5f * physicalSpacing;
-        const float cloudTop = 120.f;
+        const float cloudTop = 800.f;
         for (int row = 0; row < cloudRows; ++row) {
             for (int col = 0; col < cloudCols; ++col) {
                 const float x = cloudLeft + col * physicalSpacing + (row % 2 ? physicalSpacing * 0.5f : 0.f);
@@ -175,8 +175,8 @@ int main() {
         saveInitialPositions();
     };
 
-    //makeDropOnBlock();
-    makeWalls();
+    makeDropOnBlock();
+    //makeParticleCloud();
     
 
     // Main loop
@@ -216,6 +216,26 @@ int main() {
         for (int i = 0; i < substeps; ++i) {
             sphSolver.step(particles, substepDt);
         }
+
+        // Calculate and print max velocity, check CFL condition
+        double maxVelocity = 0.0;
+        const double smoothingRadius = sphSolver.getSmoothingRadius();
+        const double cflThreshold = 0.4;  // CFL stability threshold
+        int cflViolations = 0;
+
+        for (auto& p : particles) {
+            const double speed = std::sqrt(p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y);
+            maxVelocity = std::max(maxVelocity, speed);
+
+            // Check CFL: velocity * dt / smoothing_radius
+            const double cfl = (speed * substepDt) / smoothingRadius;
+            p.cflViolated = (cfl > cflThreshold);
+            if (p.cflViolated) {
+                cflViolations++;
+            }
+        }
+        std::cout << "Frame " << frameCounter << " | Max velocity: " << maxVelocity 
+                  << " | CFL violations: " << cflViolations << std::endl;
 
         renderer.clear();
         renderer.drawParticles(particles);

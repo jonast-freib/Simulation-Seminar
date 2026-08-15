@@ -11,7 +11,7 @@ Renderer::Renderer(unsigned int width, unsigned int height, const std::string& t
     , particleVertices()
     , particleRadius(particleRadius)
     , fpsText(font, "", 24) {
-    window.setFramerateLimit(60);
+    //window.setFramerateLimit(60);
     createParticleTexture();
 
     if (!font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf")) {
@@ -67,7 +67,7 @@ void Renderer::setSliderValue(std::size_t index, float value) {
 }
 
 void Renderer::createParticleTexture() {
-    const unsigned int textureSize = 64;
+    const unsigned int textureSize = 12;
     sf::Image image(sf::Vector2u(textureSize, textureSize), sf::Color::Transparent);
 
     const float center = static_cast<float>(textureSize) * 0.5f;
@@ -164,9 +164,14 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
         minP = 0.0; maxP = 1.0;
     }
 
-    auto pressureToColor = [&](double pressure) -> sf::Color {
+    auto pressureToColor = [&](const Particle& particle) -> sf::Color {
+        // If CFL violated, show purple
+        if (particle.cflViolated) {
+            return sf::Color(200, 0, 200, 220);  // Purple
+        }
+
         double n = 0.0;
-        if (maxP > minP) n = (pressure - minP) / (maxP - minP);
+        if (maxP > minP) n = (particle.pressure - minP) / (maxP - minP);
         n = std::max(0.0, std::min(1.0, n));
         // simple blue -> cyan -> green -> yellow -> red mapping
         const double r = std::min(1.0, std::max(0.0, 1.5 * n));
@@ -182,7 +187,7 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
         const auto& particle = particles[i];
         const float cx = static_cast<float>(particle.position.x);
         const float cy = static_cast<float>(particle.position.y);
-        const sf::Color color = pressureToColor(static_cast<float>(particle.pressure));
+        const sf::Color color = pressureToColor(particle);
         const std::size_t baseIndex = i * 6;
 
         particleVertices[baseIndex + 0].position = {cx - halfSize, cy - halfSize};
@@ -239,22 +244,7 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
 }
 
 void Renderer::display() {
-    // Calculate FPS
-    timeElapsed += fpsClock.restart().asSeconds();
-    frameCount++;
-
-    if (timeElapsed >= 1.f) {
-        float fps = frameCount / timeElapsed;
-        fpsText.setString("FPS: " + std::to_string(static_cast<int>(fps)));
-        frameCount = 0;
-        timeElapsed = 0.f;
-    }
-
-    // Draw FPS text if font is loaded
-    if (fontLoaded) {
-        window.draw(fpsText);
-    }
-
+    
     window.display();
 }
 
