@@ -8,7 +8,7 @@
 int main() {
     const int particlesX = 10;
     const int particlesY = 10;
-    const float particleRadius = 4.f; // visual radius only, physics uses smoothing radius
+    const float particleRadius = 5.f; // visual radius only, physics uses smoothing radius
 
     const unsigned int windowWidth = 1700;
     const unsigned int windowHeight = 900;
@@ -53,7 +53,7 @@ int main() {
     };
 
     auto getPhysicalSpacing = [&](double smoothingRadius) {
-        return static_cast<float>(smoothingRadius * 0.7);
+        return static_cast<float>(smoothingRadius * 0.5);
     };
 
     auto applyPresetSliders = [&](float restDensity, float gasConstant, float viscosity, float smoothingRadius, float timestep, float gravity) {
@@ -75,7 +75,7 @@ int main() {
     const float boundaryLeft = windowWidth * 0.5f;
 
     auto makeDropOnBlock = [&]() {
-        applyPresetSliders(300.f, 2000.f, 200.f, 10.f, 0.05f, 10.f);
+        applyPresetSliders(300.f, 2000.f, 200.f, 10.f, 0.0005f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
         const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
@@ -95,7 +95,7 @@ int main() {
     };
 
     auto makeParticleCloud = [&]() {
-        applyPresetSliders(300.f, 2000.f, 200.f, 12.f, 0.0007f, 10.f);
+        applyPresetSliders(300.f, 500.f, 200.f, 14.f, 0.007f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
         const float physicalSpacing = getPhysicalSpacing(sphSolver.getSmoothingRadius());
@@ -175,8 +175,8 @@ int main() {
         saveInitialPositions();
     };
 
-    makeDropOnBlock();
-    //makeParticleCloud();
+    //makeDropOnBlock();
+    makeParticleCloud();
     
 
     // Main loop
@@ -199,7 +199,19 @@ int main() {
             frameCounter = 0;
         }
 
-        
+        //iterate over all particles and print all values if not fixed
+        /*for (const auto& particle : particles) {
+            if (!particle.fixed) {
+                std::cout << "Particle: pos(" << particle.position.x << ", " << particle.position.y << ") "
+                          << "vel(" << particle.velocity.x << ", " << particle.velocity.y << ") "
+                          << "acc(" << particle.acceleration.x << ", " << particle.acceleration.y << ") "
+                          << "mass(" << particle.mass << ") "
+                          << "density(" << particle.density << ") "
+                          << "pressure(" << particle.pressure << ") "
+                          << "cflViolated(" << (particle.cflViolated ? "true" : "false") << ")"
+                          << std::endl;
+            }
+        }*/
 
         // Handle Reset and preset buttons
         if (renderer.consumeButtonPress(0)) {
@@ -211,7 +223,7 @@ int main() {
         }
 
         const double dt = static_cast<double>(renderer.getSliderValue(4));
-        constexpr int substeps = 10;
+        constexpr int substeps = 40;
         const double substepDt = dt / static_cast<double>(substeps);
         for (int i = 0; i < substeps; ++i) {
             sphSolver.step(particles, substepDt);
@@ -234,8 +246,8 @@ int main() {
                 cflViolations++;
             }
         }
-        std::cout << "Frame " << frameCounter << " | Max velocity: " << maxVelocity 
-                  << " | CFL violations: " << cflViolations << std::endl;
+        
+        
 
         renderer.clear();
         renderer.drawParticles(particles);

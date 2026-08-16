@@ -167,7 +167,7 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     auto pressureToColor = [&](const Particle& particle) -> sf::Color {
         // If CFL violated, show purple
         if (particle.cflViolated) {
-            return sf::Color(200, 0, 200, 220);  // Purple
+            return sf::Color(200, 0, 0, 220);  // Purple
         }
 
         double n = 0.0;
