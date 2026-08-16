@@ -35,7 +35,6 @@ private:
 	// Smoothing kernels & helpers
 	double cubicSplineKernel(double r2, double h) const;
 	Vector2D cubicSplineGradient(const Vector2D& rij, double r, double h) const;
-	double viscosityLaplacian(double r, double h) const;
 	double computeParticleMass() const;
 
 private:

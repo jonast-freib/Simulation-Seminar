@@ -116,16 +116,6 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 {
 	const std::size_t particleCount = particles.size();
 
-	/*
-	 * Phase 1:
-	 *
-	 * Compute non-pressure accelerations:
-	 *   - gravity
-	 *   - viscosity
-	 *
-	 * These accelerations are stored temporarily because pressure
-	 * acceleration is calculated separately below.
-	 */
 	std::vector<Vector2D> accelNonPressure(
 		particleCount,
 		Vector2D(0.0, 0.0));
@@ -136,8 +126,7 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 
 		if (pi.fixed)
 		{
-			accelNonPressure[i] =
-				Vector2D(0.0, 0.0);
+			accelNonPressure[i] = Vector2D(0.0, 0.0);
 
 			continue;
 		}
@@ -147,13 +136,13 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 		for (std::size_t j : neighborSearch.getNeighbors(i))
 		{
 			const Particle &pj = particles[j];
+			if (pj.fixed)
+			{
+				continue;
+			}
+			const Vector2D rij = pi.position - pj.position;
 
-			const Vector2D rij =
-				pi.position - pj.position;
-
-			const double r2 =
-				rij.x * rij.x +
-				rij.y * rij.y;
+			const double r2 = rij.x * rij.x + rij.y * rij.y;
 
 			const double r = std::sqrt(r2);
 
@@ -162,31 +151,19 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 				continue;
 			}
 
-			const Vector2D vRel =
-				pi.velocity - pj.velocity;
+			const Vector2D vRel = pi.velocity - pj.velocity;
 
-			const double numerator =
-				vRel.x * rij.x +
-				vRel.y * rij.y;
+			const double vijDotXij = vRel.x * rij.x + vRel.y * rij.y;
 
-			const double epsilon =
-				0.01 * smoothingRadius * smoothingRadius;
+			const double epsilon = 0.01 * smoothingRadius * smoothingRadius;
 
-			const Vector2D gradW =
-				cubicSplineGradient(
-					rij,
-					r,
-					smoothingRadius);
+			const Vector2D gradW = cubicSplineGradient(rij, r, smoothingRadius);
 
-			const double particleDensity =
-				std::max(pi.density, 1e-8);
+			const double particleDensity = std::max(pi.density, 1e-8);
 
-			viscositySum +=
-				(2.0 * viscosity * pj.mass / particleDensity) *
-				((numerator / (r2 + epsilon))) *
-				gradW;
+			viscositySum += (pj.mass / particleDensity) * ((vijDotXij / (r2 + epsilon))) * gradW;
 		}
-
+		Vector2D viscositySumFinal = 2.0 * viscosity * viscositySum;
 		const double particleDensity =
 			std::max(pi.density, 1e-8);
 
@@ -259,10 +236,6 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 				gradW;
 		}
 
-		/*
-		 * pressureForceSum already contains 1/rho_i,
-		 * so there is no additional division by particle density.
-		 */
 		const Vector2D pressureAcceleration =
 			pressureForceSum;
 		if (!pi.fixed)
@@ -372,29 +345,6 @@ void SPHSolver::integrate(
 	}
 }
 
-/*
- * Standard 2D cubic B-spline kernel.
- *
- * Support:
- *
- *     0 <= r < 2h
- *
- * With:
- *
- *     q = r / h
- *
- * The normalized kernel is:
- *
- *     W(q) = alpha *
- *
- *       (1 - 1.5 q^2 + 0.75 q^3)     0 <= q < 1
- *
- *       0.25 (2-q)^3                  1 <= q < 2
- *
- * where:
- *
- *     alpha = 10 / (7 pi h^2)
- */
 double SPHSolver::cubicSplineKernel(
 	double r2,
 	double h) const
@@ -413,8 +363,6 @@ double SPHSolver::cubicSplineKernel(
 		return 0.0;
 	}
 
-	
-
 	const double alpha =
 		5.0 /
 		(14.0 * M_PI * h * h);
@@ -423,19 +371,19 @@ double SPHSolver::cubicSplineKernel(
 	{
 		return alpha *
 			   ((2 - q) *
-			   (2 - q) *
-			   (2 - q) );
+				(2 - q) *
+				(2 - q));
 	}
 
 	if (0.0 <= q && q < 1.0)
 	{
 		return alpha *
-			   (2-q) *
-			   (2-q) *
-			   (2-q) -
-			   4.0 *(1-q) *
-			   (1-q) *
-			   (1-q);
+				   (2 - q) *
+				   (2 - q) *
+				   (2 - q) -
+			   4.0 * (1 - q) *
+				   (1 - q) *
+				   (1 - q);
 	}
 
 	const double t =
@@ -457,24 +405,20 @@ Vector2D SPHSolver::cubicSplineGradient(
 	}
 
 	const double q = r / h;
-
 	const double alpha =
-		10.0 / (7.0 * M_PI * h * h);
+		5.0 /
+		(14.0 * M_PI * h * h);
 
-	double dWdq;
+	double dWdq = 0.0;
 
 	if (q < 1.0)
 	{
-		dWdq =
-			-3.0 * q +
-			2.25 * q * q;
+		dWdq = -3.0 * (2.0 - q) * (2.0 - q) * q + 12.0 * (1.0 - q) * (1.0 - q);
 	}
-	else
+	else if (q < 2.0)
 	{
 		const double t = 2.0 - q;
-
-		dWdq =
-			-0.75 * t * t;
+		dWdq = -3.0 * t * t;
 	}
 
 	const double factor =
@@ -483,51 +427,6 @@ Vector2D SPHSolver::cubicSplineGradient(
 	return rij * factor;
 }
 
-/*
- * Standard 2D SPH viscosity Laplacian.
- *
- * Support:
- *
- *     0 <= r < h
- *
- * One commonly used 2D formulation is:
- *
- *     laplacian(W) =
- *         20 / (3 pi h^5) * (h-r)
- */
-double SPHSolver::viscosityLaplacian(
-	double r,
-	double h) const
-{
-	if (h <= 0.0 ||
-		r <= 0.0 ||
-		r >= h)
-	{
-
-		return 0.0;
-	}
-
-	return 20.0 /
-		   (3.0 * M_PI * std::pow(h, 5)) *
-		   (h - r);
-}
-
-/*
- * Compute particle mass from the desired rest density
- * and particle spacing.
- *
- * In 2D:
- *
- *     mass = density * area_per_particle
- *
- * We use:
- *
- *     spacing = 0.7 h
- *
- * so:
- *
- *     mass = rho0 * spacing^2
- */
 double SPHSolver::computeParticleMass() const
 {
 	const double spacing =
