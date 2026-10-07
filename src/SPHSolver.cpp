@@ -84,6 +84,13 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
 	{
 		Particle &pi = particles[i];
 
+		if (pi.fixed)
+		{
+			pi.density = restDensity;
+			pi.pressure = 0.0;
+			continue;
+		}
+
 		double densitySum = 0.0;
 
 		for (std::size_t j : neighborSearch.getNeighbors(i))
@@ -136,10 +143,7 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 		for (std::size_t j : neighborSearch.getNeighbors(i))
 		{
 			const Particle &pj = particles[j];
-			if (pj.fixed)
-			{
-				continue;
-			}
+			
 			const Vector2D rij = pi.position - pj.position;
 
 			const double r2 = rij.x * rij.x + rij.y * rij.y;
@@ -187,7 +191,8 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 			continue;
 		}
 
-		Vector2D pressureForceSum(0.0, 0.0);
+		Vector2D pressureForceSumFluid(0.0, 0.0);
+		Vector2D pressureForceSumBoundary(0.0, 0.0);
 
 		for (std::size_t j : neighborSearch.getNeighbors(i))
 		{
@@ -213,16 +218,24 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 			const double neighborDensity =
 				std::max(pj.density, 1e-8);
 
-			/*
-			 * For fixed boundary particles we still use the
-			 * symmetric pressure formulation. This requires
-			 * boundary particles to have a meaningful density.
-			 */
-			const double pressureTerm =
-				(pi.pressure + pj.pressure) /
-				(2.0 *
-				 particleDensity *
-				 neighborDensity);
+			double pressureTermFluid = 0.0;
+			double pressureTermBoundary = 0.0;
+
+
+			if (!pj.fixed)
+			{
+				// Fluid-Fluid interaction
+				pressureTermFluid =
+					(pi.pressure / (pi.density * pi.density) + pj.pressure / (pj.density * pj.density)); 
+			}
+			if (pj.fixed)
+			{
+				// Fluid-Boundary interaction
+				pressureTermBoundary =
+					(pi.pressure / (pi.density * pi.density) + pi.pressure / (pi.density * pi.density));
+			}
+			
+
 
 			const Vector2D gradW =
 				cubicSplineGradient(
@@ -230,17 +243,28 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 					r,
 					smoothingRadius);
 
-			pressureForceSum +=
-				-pj.mass *
-				pressureTerm *
-				gradW;
+			if (!pj.fixed)
+			{
+				pressureForceSumFluid +=
+					-pj.mass *
+					pressureTermFluid *
+					gradW;
+			}
+			if (pj.fixed)
+			{
+				pressureForceSumBoundary +=
+					-pj.mass *
+					pressureTermBoundary *
+					gradW;
+			}
 		}
 
 		const Vector2D pressureAcceleration =
-			pressureForceSum;
-		if (!pi.fixed)
+			pressureForceSumFluid;
+		if (!pi.fixed && (accelNonPressure[i].x != 0.0 || accelNonPressure[i].y != 10.0 || pressureAcceleration.x != 0.0 || pressureAcceleration.y != 0.0))
 		{
 			printf("Particle %zu: non Pressure acceleration = (%f, %f)\n", i, accelNonPressure[i].x, accelNonPressure[i].y);
+			printf("Particle %zu: Pressure acceleration = (%f, %f)\n", i, pressureAcceleration.x, pressureAcceleration.y);
 		}
 		pi.acceleration =
 			accelNonPressure[i] +
@@ -256,23 +280,7 @@ void SPHSolver::integrate(
 
 	for (auto &particle : particles)
 	{
-		if (particle.fixed)
-		{
-			particle.velocity =
-				Vector2D(0.0, 0.0);
 
-			particle.acceleration =
-				Vector2D(0.0, 0.0);
-
-			continue;
-		}
-
-		/*
-		 * Semi-implicit Euler integration:
-		 *
-		 * v(t + dt) = v(t) + a(t) dt
-		 * x(t + dt) = x(t) + v(t + dt) dt
-		 */
 		particle.velocity +=
 			particle.acceleration * dt;
 
