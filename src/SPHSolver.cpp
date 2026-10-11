@@ -103,9 +103,16 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
                 rij.x * rij.x +
                 rij.y * rij.y;
 
-            densitySum +=
-                pj.mass *
+            const double kernelValue =
                 cubicSplineKernel(r2, smoothingRadius);
+
+            densitySum += pj.mass * kernelValue;
+
+            // Fixed particles represent the mirrored solid half-space.
+            if (pj.fixed)
+            {
+                densitySum += pj.mass * kernelValue;
+            }
         }
         pi.density = densitySum;
         pi.pressure =
@@ -224,13 +231,15 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
             {
                 // Fluid-Fluid interaction
                 pressureTermFluid =
-                    (pi.pressure / (pi.density * pi.density) + pj.pressure / (pj.density * pj.density));
+                    (pi.pressure / (particleDensity * particleDensity) +
+                     pj.pressure / (neighborDensity * neighborDensity));
             }
             if (pj.fixed)
             {
                 // Fluid-Boundary interaction
                 pressureTermBoundary =
-                    (pi.pressure / (pi.density * pi.density) + pi.pressure / (pi.density * pi.density));
+                    2.0 * pi.pressure /
+                    (particleDensity * particleDensity);
             }
 
             const Vector2D gradW =
@@ -257,7 +266,7 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 
         const Vector2D pressureAcceleration =
             pressureForceSumFluid + pressureForceSumBoundary;
-        if (!pi.fixed && (accelNonPressure[i].x != 0.0 || accelNonPressure[i].y != 10.0 || pressureAcceleration.x != 0.0 || pressureAcceleration.y != 0.0))
+        if (!pi.fixed && (pressureAcceleration.x != 0.0 || pressureAcceleration.y != 0.0))
         {
             printf("Particle %zu: non Pressure acceleration = (%f, %f)\n", i, accelNonPressure[i].x, accelNonPressure[i].y);
             printf("Particle %zu: Pressure acceleration = (%f, %f)\n", i, pressureAcceleration.x, pressureAcceleration.y);
@@ -382,12 +391,12 @@ double SPHSolver::cubicSplineKernel(
     if (0.0 <= q && q < 1.0)
     {
         return alpha *
-                   (2 - q) *
-                   (2 - q) *
-                   (2 - q) -
-               4.0 * ((1 - q) *
-                      (1 - q) *
-                      (1 - q));
+               ((2.0 - q) *
+                    (2.0 - q) *
+                    (2.0 - q) -
+                4.0 * (1.0 - q) *
+                    (1.0 - q) *
+                    (1.0 - q));
     }
 
     const double t =
