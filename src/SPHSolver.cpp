@@ -143,7 +143,7 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 		for (std::size_t j : neighborSearch.getNeighbors(i))
 		{
 			const Particle &pj = particles[j];
-			
+
 			const Vector2D rij = pi.position - pj.position;
 
 			const double r2 = rij.x * rij.x + rij.y * rij.y;
@@ -221,12 +221,11 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 			double pressureTermFluid = 0.0;
 			double pressureTermBoundary = 0.0;
 
-
 			if (!pj.fixed)
 			{
 				// Fluid-Fluid interaction
 				pressureTermFluid =
-					(pi.pressure / (pi.density * pi.density) + pj.pressure / (pj.density * pj.density)); 
+					(pi.pressure / (pi.density * pi.density) + pj.pressure / (pj.density * pj.density));
 			}
 			if (pj.fixed)
 			{
@@ -234,8 +233,6 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 				pressureTermBoundary =
 					(pi.pressure / (pi.density * pi.density) + pi.pressure / (pi.density * pi.density));
 			}
-			
-
 
 			const Vector2D gradW =
 				cubicSplineGradient(

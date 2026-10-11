@@ -4,8 +4,8 @@
 #include "Renderer.h"
 #include "SPHSolver.h"
 
-
-int main() {
+int main()
+{
     const int particlesX = 10;
     const int particlesY = 10;
     const float particleRadius = 5.f; // visual radius only, physics uses smoothing radius
@@ -44,19 +44,23 @@ int main() {
     particles.reserve(particlesX * particlesY + 200);
     std::vector<Vector2D> initialPositions;
 
-    auto saveInitialPositions = [&]() {
+    auto saveInitialPositions = [&]()
+    {
         initialPositions.clear();
         initialPositions.reserve(particles.size());
-        for (const auto& p : particles) {
+        for (const auto &p : particles)
+        {
             initialPositions.push_back(p.position);
         }
     };
 
-    auto getPhysicalSpacing = [&](double smoothingRadius) {
+    auto getPhysicalSpacing = [&](double smoothingRadius)
+    {
         return static_cast<float>(smoothingRadius * 0.5);
     };
 
-    auto applyPresetSliders = [&](float restDensity, float gasConstant, float viscosity, float smoothingRadius, float timestep, float gravity) {
+    auto applyPresetSliders = [&](float restDensity, float gasConstant, float viscosity, float smoothingRadius, float timestep, float gravity)
+    {
         renderer.setSliderValue(0, restDensity);
         renderer.setSliderValue(1, gasConstant);
         renderer.setSliderValue(2, viscosity);
@@ -74,7 +78,8 @@ int main() {
     const float boundaryTop = windowHeight - 180.f;
     const float boundaryLeft = windowWidth * 0.5f;
 
-    auto makeDropOnBlock = [&]() {
+    auto makeDropOnBlock = [&]()
+    {
         applyPresetSliders(300.f, 500.f, 200.f, 10.f, 0.005f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
@@ -86,10 +91,13 @@ int main() {
         const int floorLength = 18 * 2;
         const int wallHeight = 12;
 
-        auto addFixedBlock = [&](float cx, float cy, int cols, int rows) {
+        auto addFixedBlock = [&](float cx, float cy, int cols, int rows)
+        {
             const float left = cx - (cols - 1) * 0.5f * physicalSpacing;
-            for (int row = 0; row < rows; ++row) {
-                for (int col = 0; col < cols; ++col) {
+            for (int row = 0; row < rows; ++row)
+            {
+                for (int col = 0; col < cols; ++col)
+                {
                     const float x = left + col * physicalSpacing;
                     const float y = cy + row * physicalSpacing;
                     particles.emplace_back(Vector2D(x, y), particleMass, true);
@@ -106,8 +114,10 @@ int main() {
         const int cloudRows = 5;
         const float cloudLeft = windowWidth * 0.5f - (cloudCols - 1) * 0.5f * physicalSpacing;
         const float cloudTop = windowHeight - 250.f;
-        for (int row = 0; row < cloudRows; ++row) {
-            for (int col = 0; col < cloudCols; ++col) {
+        for (int row = 0; row < cloudRows; ++row)
+        {
+            for (int col = 0; col < cloudCols; ++col)
+            {
                 const float x = cloudLeft + col * physicalSpacing + (row % 2 ? physicalSpacing * 0.5f : 0.f);
                 const float y = cloudTop + row * physicalSpacing;
                 particles.emplace_back(Vector2D(x, y), particleMass, false);
@@ -116,7 +126,8 @@ int main() {
         saveInitialPositions();
     };
 
-        auto makeDropOnBlockSingle = [&]() {
+    auto makeDropOnBlockSingle = [&]()
+    {
         applyPresetSliders(300.f, 500.f, 200.f, 10.f, 0.005f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
@@ -128,10 +139,13 @@ int main() {
         const int floorLength = 18 * 2;
         const int wallHeight = 12;
 
-        auto addFixedBlock = [&](float cx, float cy, int cols, int rows) {
+        auto addFixedBlock = [&](float cx, float cy, int cols, int rows)
+        {
             const float left = cx - (cols - 1) * 0.5f * physicalSpacing;
-            for (int row = 0; row < rows; ++row) {
-                for (int col = 0; col < cols; ++col) {
+            for (int row = 0; row < rows; ++row)
+            {
+                for (int col = 0; col < cols; ++col)
+                {
                     const float x = left + col * physicalSpacing;
                     const float y = cy + row * physicalSpacing;
                     particles.emplace_back(Vector2D(x, y), particleMass, true);
@@ -144,15 +158,15 @@ int main() {
         addFixedBlock(floorLeft - 1.5f * physicalSpacing, floorY - 10.0f * physicalSpacing, 2, wallHeight);
         addFixedBlock(floorRight + 1.5f * physicalSpacing, floorY - 10.0f * physicalSpacing, 2, wallHeight);
 
-
-        //add a single particle above the block
+        // add a single particle above the block
         const float singleParticleX = windowWidth * 0.5f;
         const float singleParticleY = windowHeight - 300.f;
         particles.emplace_back(Vector2D(singleParticleX, singleParticleY), particleMass, false);
         saveInitialPositions();
     };
 
-    auto makeParticleCloud = [&]() {
+    auto makeParticleCloud = [&]()
+    {
         applyPresetSliders(300.f, 500.f, 200.f, 14.f, 0.007f, 10.f);
         particles.clear();
         const double particleMass = sphSolver.getParticleMass();
@@ -161,8 +175,10 @@ int main() {
         const int cloudRows = 5;
         const float cloudLeft = windowWidth * 0.5f - (cloudCols - 1) * 0.5f * physicalSpacing;
         const float cloudTop = 800.f;
-        for (int row = 0; row < cloudRows; ++row) {
-            for (int col = 0; col < cloudCols; ++col) {
+        for (int row = 0; row < cloudRows; ++row)
+        {
+            for (int col = 0; col < cloudCols; ++col)
+            {
                 const float x = cloudLeft + col * physicalSpacing + (row % 2 ? physicalSpacing * 0.5f : 0.f);
                 const float y = cloudTop + row * physicalSpacing;
                 particles.emplace_back(Vector2D(x, y), particleMass, false);
@@ -171,18 +187,19 @@ int main() {
         saveInitialPositions();
     };
 
-    //makeDropOnBlock();
-    //makeParticleCloud();
+    // makeDropOnBlock();
+    // makeParticleCloud();
     makeDropOnBlockSingle();
-    
 
     // Main loop
     int frameCounter = 0;
-    while (renderer.isOpen()) {
+    while (renderer.isOpen())
+    {
         renderer.handleEvents();
 
         ++frameCounter;
-        if (frameCounter >= 60) {
+        if (frameCounter >= 60)
+        {
             // Read slider values and apply to solver at a reduced cadence.
             sphSolver.setRestDensity(static_cast<double>(renderer.getSliderValue(0)));
             sphSolver.setGasConstant(static_cast<double>(renderer.getSliderValue(1)));
@@ -190,13 +207,14 @@ int main() {
             sphSolver.setSmoothingRadius(static_cast<double>(renderer.getSliderValue(3)));
             sphSolver.setGravity(Vector2D(0.0, static_cast<double>(renderer.getSliderValue(5))));
             const double currentParticleMass = sphSolver.getParticleMass();
-            for (auto& particle : particles) {
-            particle.mass = currentParticleMass;
+            for (auto &particle : particles)
+            {
+                particle.mass = currentParticleMass;
             }
             frameCounter = 0;
         }
 
-        //iterate over all particles and print all values if not fixed
+        // iterate over all particles and print all values if not fixed
         /*for (const auto& particle : particles) {
             if (particle.fixed) {
                 std::cout << "Particle: pos(" << particle.position.x << ", " << particle.position.y << ") "
@@ -211,8 +229,10 @@ int main() {
         }*/
 
         // Handle Reset and preset buttons
-        if (renderer.consumeButtonPress(0)) {
-            for (std::size_t i = 0; i < particles.size(); ++i) {
+        if (renderer.consumeButtonPress(0))
+        {
+            for (std::size_t i = 0; i < particles.size(); ++i)
+            {
                 particles[i].position = initialPositions[i];
                 particles[i].velocity = Vector2D(0.0, 0.0);
                 particles[i].acceleration = Vector2D(0.0, 0.0);
@@ -222,29 +242,30 @@ int main() {
         const double dt = static_cast<double>(renderer.getSliderValue(4));
         constexpr int substeps = 40;
         const double substepDt = dt / static_cast<double>(substeps);
-        for (int i = 0; i < substeps; ++i) {
+        for (int i = 0; i < substeps; ++i)
+        {
             sphSolver.step(particles, substepDt);
         }
 
         // Calculate and print max velocity, check CFL condition
         double maxVelocity = 0.0;
         const double smoothingRadius = sphSolver.getSmoothingRadius();
-        const double cflThreshold = 0.4;  // CFL stability threshold
+        const double cflThreshold = 0.4; // CFL stability threshold
         int cflViolations = 0;
 
-        for (auto& p : particles) {
+        for (auto &p : particles)
+        {
             const double speed = std::sqrt(p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y);
             maxVelocity = std::max(maxVelocity, speed);
 
             // Check CFL: velocity * dt / smoothing_radius
             const double cfl = (speed * substepDt) / smoothingRadius;
             p.cflViolated = (cfl > cflThreshold);
-            if (p.cflViolated) {
+            if (p.cflViolated)
+            {
                 cflViolations++;
             }
         }
-        
-        
 
         renderer.clear();
         renderer.drawParticles(particles);

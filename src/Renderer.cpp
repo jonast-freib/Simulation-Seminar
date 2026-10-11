@@ -5,35 +5,40 @@
 #include <algorithm>
 #include <cstdint>
 
-Renderer::Renderer(unsigned int width, unsigned int height, const std::string& title, float particleRadius)
-    : window(sf::VideoMode(sf::Vector2u(width, height)), title)
-    , particleBuffer(sf::PrimitiveType::Triangles, sf::VertexBuffer::Usage::Stream)
-    , particleVertices()
-    , particleRadius(particleRadius)
-    , fpsText(font, "", 24) {
-    //window.setFramerateLimit(60);
+Renderer::Renderer(unsigned int width, unsigned int height, const std::string &title, float particleRadius)
+    : window(sf::VideoMode(sf::Vector2u(width, height)), title), particleBuffer(sf::PrimitiveType::Triangles, sf::VertexBuffer::Usage::Stream), particleVertices(), particleRadius(particleRadius), fpsText(font, "", 24)
+{
+    // window.setFramerateLimit(60);
     createParticleTexture();
 
-    if (!font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf")) {
+    if (!font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"))
+    {
         // Fallback: try another common font path
-        if (!font.openFromFile("/usr/share/fonts/truetype/freefont/FreeSans.ttf")) {
+        if (!font.openFromFile("/usr/share/fonts/truetype/freefont/FreeSans.ttf"))
+        {
             // If no font found, just skip FPS display
             std::cerr << "Warning: Could not load font for FPS display" << std::endl;
             fontLoaded = false;
-        } else {
+        }
+        else
+        {
             fontLoaded = true;
         }
-    } else {
+    }
+    else
+    {
         fontLoaded = true;
     }
 
-    if (fontLoaded) {
+    if (fontLoaded)
+    {
         fpsText.setFillColor(sf::Color::White);
         fpsText.setPosition(sf::Vector2f(10.f, 10.f));
     }
 }
 
-void Renderer::addSlider(const std::string& name, float minValue, float maxValue, float initialValue, float x, float y, float width) {
+void Renderer::addSlider(const std::string &name, float minValue, float maxValue, float initialValue, float x, float y, float width)
+{
     Slider s;
     s.name = name;
     s.minValue = minValue;
@@ -54,19 +59,24 @@ void Renderer::addSlider(const std::string& name, float minValue, float maxValue
     sliders.push_back(s);
 }
 
-float Renderer::getSliderValue(std::size_t index) const {
-    if (index >= sliders.size()) return 0.f;
+float Renderer::getSliderValue(std::size_t index) const
+{
+    if (index >= sliders.size())
+        return 0.f;
     return sliders[index].value;
 }
 
-void Renderer::setSliderValue(std::size_t index, float value) {
-    if (index >= sliders.size()) return;
-    auto& s = sliders[index];
+void Renderer::setSliderValue(std::size_t index, float value)
+{
+    if (index >= sliders.size())
+        return;
+    auto &s = sliders[index];
     s.value = std::max(s.minValue, std::min(s.maxValue, value));
     s.updateKnob();
 }
 
-void Renderer::createParticleTexture() {
+void Renderer::createParticleTexture()
+{
     const unsigned int textureSize = 12;
     sf::Image image(sf::Vector2u(textureSize, textureSize), sf::Color::Transparent);
 
@@ -74,8 +84,10 @@ void Renderer::createParticleTexture() {
     const float radius = center - 1.f;
     const float radiusSquared = radius * radius;
 
-    for (unsigned int y = 0; y < textureSize; ++y) {
-        for (unsigned int x = 0; x < textureSize; ++x) {
+    for (unsigned int y = 0; y < textureSize; ++y)
+    {
+        for (unsigned int x = 0; x < textureSize; ++x)
+        {
             const float dx = static_cast<float>(x) + 0.5f - center;
             const float dy = static_cast<float>(y) + 0.5f - center;
             const float distanceSquared = dx * dx + dy * dy;
@@ -84,47 +96,64 @@ void Renderer::createParticleTexture() {
         }
     }
 
-    if (!particleTexture.loadFromImage(image)) {
+    if (!particleTexture.loadFromImage(image))
+    {
         std::cerr << "Failed to create particle texture" << std::endl;
     }
     particleTexture.setSmooth(true);
 }
 
-bool Renderer::isOpen() const {
+bool Renderer::isOpen() const
+{
     return window.isOpen();
 }
 
-void Renderer::handleEvents() {
-    while (auto event = window.pollEvent()) {
-        if (event->is<sf::Event::Closed>()) {
+void Renderer::handleEvents()
+{
+    while (auto event = window.pollEvent())
+    {
+        if (event->is<sf::Event::Closed>())
+        {
             window.close();
         }
 
         // Handle slider interaction
-        if (event->is<sf::Event::MouseButtonPressed>()) {
+        if (event->is<sf::Event::MouseButtonPressed>())
+        {
             const sf::Vector2i mp = sf::Mouse::getPosition(window);
             const sf::Vector2f mpf(static_cast<float>(mp.x), static_cast<float>(mp.y));
-            for (auto& s : sliders) {
+            for (auto &s : sliders)
+            {
                 const sf::FloatRect trackBounds = s.track.getGlobalBounds();
-                if (trackBounds.contains(mpf)) {
+                if (trackBounds.contains(mpf))
+                {
                     s.dragging = true;
                 }
             }
-        } else if (event->is<sf::Event::MouseButtonReleased>()) {
+        }
+        else if (event->is<sf::Event::MouseButtonReleased>())
+        {
             // On mouse release, stop dragging sliders and detect button presses
             const sf::Vector2i mp = sf::Mouse::getPosition(window);
             const sf::Vector2f mpf(static_cast<float>(mp.x), static_cast<float>(mp.y));
-            for (auto& s : sliders) s.dragging = false;
-            for (auto& b : buttons) {
-                if (b.rect.getGlobalBounds().contains(mpf)) {
+            for (auto &s : sliders)
+                s.dragging = false;
+            for (auto &b : buttons)
+            {
+                if (b.rect.getGlobalBounds().contains(mpf))
+                {
                     b.pressed = true;
                 }
             }
-        } else if (event->is<sf::Event::MouseMoved>()) {
+        }
+        else if (event->is<sf::Event::MouseMoved>())
+        {
             const sf::Vector2i mp = sf::Mouse::getPosition(window);
             const float mx = static_cast<float>(mp.x);
-            for (auto& s : sliders) {
-                if (!s.dragging) continue;
+            for (auto &s : sliders)
+            {
+                if (!s.dragging)
+                    continue;
                 const float trackLeft = s.track.getPosition().x;
                 const float t = std::max(0.f, std::min(s.width, mx - trackLeft)) / s.width;
                 s.value = s.minValue + t * (s.maxValue - s.minValue);
@@ -134,17 +163,21 @@ void Renderer::handleEvents() {
     }
 }
 
-void Renderer::clear() {
+void Renderer::clear()
+{
     window.clear(sf::Color::Black);
 }
 
-void Renderer::drawParticles(const std::vector<Particle>& particles) {
+void Renderer::drawParticles(const std::vector<Particle> &particles)
+{
     const float halfSize = particleRadius;
     const std::size_t requiredVertices = particles.size() * 6;
 
-    if (particleVertices.size() != requiredVertices) {
+    if (particleVertices.size() != requiredVertices)
+    {
         particleVertices.resize(requiredVertices);
-        if (!particleBuffer.create(requiredVertices)) {
+        if (!particleBuffer.create(requiredVertices))
+        {
             std::cerr << "Failed to create particle vertex buffer" << std::endl;
             return;
         }
@@ -156,22 +189,28 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     // determine pressure bounds for coloring
     double minP = std::numeric_limits<double>::infinity();
     double maxP = -std::numeric_limits<double>::infinity();
-    for (const auto& p : particles) {
+    for (const auto &p : particles)
+    {
         minP = std::min(minP, p.pressure);
         maxP = std::max(maxP, p.pressure);
     }
-    if (minP == std::numeric_limits<double>::infinity()) {
-        minP = 0.0; maxP = 1.0;
+    if (minP == std::numeric_limits<double>::infinity())
+    {
+        minP = 0.0;
+        maxP = 1.0;
     }
 
-    auto pressureToColor = [&](const Particle& particle) -> sf::Color {
+    auto pressureToColor = [&](const Particle &particle) -> sf::Color
+    {
         // If CFL violated, show purple
-        if (particle.cflViolated) {
-            return sf::Color(200, 0, 0, 220);  // Purple
+        if (particle.cflViolated)
+        {
+            return sf::Color(200, 0, 0, 220); // Purple
         }
 
         double n = 0.0;
-        if (maxP > minP) n = (particle.pressure - minP) / (maxP - minP);
+        if (maxP > minP)
+            n = (particle.pressure - minP) / (maxP - minP);
         n = std::max(0.0, std::min(1.0, n));
         // simple blue -> cyan -> green -> yellow -> red mapping
         const double r = std::min(1.0, std::max(0.0, 1.5 * n));
@@ -183,8 +222,9 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
         return sf::Color(R, Gc, B, 220);
     };
 
-    for (std::size_t i = 0; i < particles.size(); ++i) {
-        const auto& particle = particles[i];
+    for (std::size_t i = 0; i < particles.size(); ++i)
+    {
+        const auto &particle = particles[i];
         const float cx = static_cast<float>(particle.position.x);
         const float cy = static_cast<float>(particle.position.y);
         const sf::Color color = pressureToColor(particle);
@@ -204,12 +244,14 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
         particleVertices[baseIndex + 4].texCoords = {texWidth, texHeight};
         particleVertices[baseIndex + 5].texCoords = {0.f, texHeight};
 
-        for (std::size_t v = 0; v < 6; ++v) {
+        for (std::size_t v = 0; v < 6; ++v)
+        {
             particleVertices[baseIndex + v].color = color;
         }
     }
 
-    if (!particleBuffer.update(particleVertices.data())) {
+    if (!particleBuffer.update(particleVertices.data()))
+    {
         std::cerr << "Failed to update particle vertex buffer" << std::endl;
         return;
     }
@@ -217,10 +259,12 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     window.draw(particleBuffer, &particleTexture);
 
     // Draw UI sliders on top
-    for (const auto& s : sliders) {
+    for (const auto &s : sliders)
+    {
         window.draw(s.track);
         window.draw(s.knob);
-        if (fontLoaded) {
+        if (fontLoaded)
+        {
             sf::Text label(font, s.name + ": " + std::to_string(s.value), 14);
             label.setFillColor(sf::Color::White);
             label.setPosition(sf::Vector2f(s.track.getPosition().x, s.track.getPosition().y - 20.f));
@@ -229,9 +273,11 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     }
 
     // Draw buttons
-    for (const auto& b : buttons) {
+    for (const auto &b : buttons)
+    {
         window.draw(b.rect);
-        if (fontLoaded) {
+        if (fontLoaded)
+        {
             sf::Text label(font, b.name, 16);
             label.setFillColor(sf::Color::White);
             // center label in button
@@ -243,12 +289,14 @@ void Renderer::drawParticles(const std::vector<Particle>& particles) {
     }
 }
 
-void Renderer::display() {
-    
+void Renderer::display()
+{
+
     window.display();
 }
 
-void Renderer::addButton(const std::string& name, float x, float y, float width, float height) {
+void Renderer::addButton(const std::string &name, float x, float y, float width, float height)
+{
     Button b;
     b.name = name;
     b.rect.setSize(sf::Vector2f(width, height));
@@ -260,8 +308,10 @@ void Renderer::addButton(const std::string& name, float x, float y, float width,
     buttons.push_back(b);
 }
 
-bool Renderer::consumeButtonPress(std::size_t index) {
-    if (index >= buttons.size()) return false;
+bool Renderer::consumeButtonPress(std::size_t index)
+{
+    if (index >= buttons.size())
+        return false;
     bool p = buttons[index].pressed;
     buttons[index].pressed = false;
     return p;
