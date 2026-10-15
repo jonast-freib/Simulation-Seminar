@@ -26,5 +26,14 @@ add_executable(neighbor_search_test
 
 target_link_libraries(neighbor_search_test PRIVATE SFML::Graphics)
 
+add_executable(sph_solver_test
+    tests/SPHSolverTest.cpp
+    src/SPHSolver.cpp
+    src/NeighborSearch.cpp
+)
+
+target_link_libraries(sph_solver_test PRIVATE SFML::Graphics)
+
 enable_testing()
 add_test(NAME NeighborSearchTest COMMAND neighbor_search_test)
+add_test(NAME SPHSolverTest COMMAND sph_solver_test)

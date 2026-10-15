@@ -266,11 +266,6 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
 
         const Vector2D pressureAcceleration =
             pressureForceSumFluid + pressureForceSumBoundary;
-        if (!pi.fixed && (pressureAcceleration.x != 0.0 || pressureAcceleration.y != 0.0))
-        {
-            printf("Particle %zu: non Pressure acceleration = (%f, %f)\n", i, accelNonPressure[i].x, accelNonPressure[i].y);
-            printf("Particle %zu: Pressure acceleration = (%f, %f)\n", i, pressureAcceleration.x, pressureAcceleration.y);
-        }
         pi.acceleration =
             accelNonPressure[i] +
             pressureAcceleration;
@@ -283,8 +278,11 @@ void SPHSolver::integrate(
 {
     const double maxSpeed = 2000.0;
 
-    for (auto &particle : particles)
+    for (std::size_t particleIndex = 0;
+         particleIndex < particles.size();
+         ++particleIndex)
     {
+        Particle &particle = particles[particleIndex];
 
         particle.velocity +=
             particle.acceleration * dt;
@@ -312,6 +310,62 @@ void SPHSolver::integrate(
 
         particle.position +=
             particle.velocity * dt;
+
+        if (!particle.fixed)
+        {
+            const double collisionRadius = 0.5 * smoothingRadius;
+            const double collisionRadiusSquared =
+                collisionRadius * collisionRadius;
+            std::size_t closestFixed = particles.size();
+            double closestDistanceSquared = collisionRadiusSquared;
+
+            for (std::size_t neighborIndex :
+                 neighborSearch.getNeighbors(particleIndex))
+            {
+                if (!particles[neighborIndex].fixed)
+                {
+                    continue;
+                }
+
+                const Vector2D offset =
+                    particle.position -
+                    particles[neighborIndex].position;
+                const double distanceSquared =
+                    offset.x * offset.x +
+                    offset.y * offset.y;
+
+                if (distanceSquared < closestDistanceSquared)
+                {
+                    closestDistanceSquared = distanceSquared;
+                    closestFixed = neighborIndex;
+                }
+            }
+
+            if (closestFixed < particles.size() &&
+                closestDistanceSquared > 0.0)
+            {
+                const Vector2D offset =
+                    particle.position - particles[closestFixed].position;
+                const double distance =
+                    std::sqrt(closestDistanceSquared);
+                const Vector2D normal = offset / distance;
+
+                particle.position =
+                    particles[closestFixed].position +
+                    normal * collisionRadius;
+
+                const double velocityAlongNormal =
+                    particle.velocity.x * normal.x +
+                    particle.velocity.y * normal.y;
+                if (velocityAlongNormal < 0.0)
+                {
+                    particle.velocity -=
+                        normal *
+                        ((1.0 + boundaryDamping) *
+                         velocityAlongNormal);
+                }
+            }
+        }
 
         /*
          * Boundary collision handling.
@@ -426,7 +480,7 @@ Vector2D SPHSolver::cubicSplineGradient(
 
     if (q < 1.0)
     {
-        dWdq = -3.0 * (2.0 - q) * (2.0 - q) * q + 12.0 * (1.0 - q) * (1.0 - q);
+        dWdq = -3.0 * (2.0 - q) * (2.0 - q) + 12.0 * (1.0 - q) * (1.0 - q);
     }
     else if (q < 2.0)
     {
