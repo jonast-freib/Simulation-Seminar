@@ -1,0 +1,24 @@
+\section{Introduction}
+
+Particle-based methods are useful for simulating fluids with free surfaces and
+changing topology. Smoothed particle hydrodynamics represents a continuum by a
+set of moving particles and approximates field quantities using a smoothing
+kernel \cite{lucy1977,morris1997}.
+
+The goal of this project is to implement and inspect a compact two-dimensional
+SPH solver in C++17. The application includes density and pressure estimation,
+viscosity, gravity, boundary particles, and an interactive SFML renderer. This
+paper describes the numerical model, the software architecture, and the tests
+used to assess the implementation.
+
+\section{Research Questions}
+
+The evaluation focuses on three questions:
+\begin{enumerate}
+    \item Does the solver preserve the expected qualitative behavior of a small
+    fluid scene?
+    \item How does the radius-based neighbor search affect the simulation's
+    computational work?
+    \item Which implementation parameters have the greatest visible effect on
+    stability and motion?
+\end{enumerate}

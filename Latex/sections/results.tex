@@ -1,0 +1,29 @@
+\section{Results}
+
+\subsection{Correctness Tests}
+
+The repository includes tests for neighbor search and solver behavior. The test
+suite is executed with CTest and provides a reproducible check for core
+invariants such as neighborhood membership and particle-state updates.
+
+\begin{table}[ht]
+    \centering
+    \caption{Planned evaluation metrics.}
+    \label{tab:metrics}
+    \begin{tabular}{ll}
+        \toprule
+        Metric & Purpose \\
+        \midrule
+        Neighbor count & Assess local interaction construction \\
+        Density deviation & Measure incompressibility behavior \\
+        Maximum velocity & Detect unstable parameter settings \\
+        Frame time & Estimate interactive performance \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Discussion}
+
+The final evaluation should report measurements for several parameter settings
+and include representative screenshots or plots. Figures can be added to this
+section with the \texttt{graphicx} package once experiment output is available.

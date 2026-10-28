@@ -1,0 +1,42 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=2.8cm}
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+\lstset{basicstyle=\ttfamily\small, frame=single, breaklines=true}
+
+\title{A Two-Dimensional Smoothed Particle Hydrodynamics Solver}
+\author{Author Name}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\begin{abstract}
+This paper documents the design and evaluation of a small two-dimensional smoothed
+particle hydrodynamics (SPH) solver. The implementation combines particle-based
+fluid dynamics, radius-based neighbor search, numerical integration, and an
+interactive renderer.
+\end{abstract}
+
+\tableofcontents
+
+\input{sections/introduction}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/conclusion}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

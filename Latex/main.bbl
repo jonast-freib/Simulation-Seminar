@@ -1,0 +1,13 @@
+\begin{thebibliography}{1}
+
+\bibitem{lucy1977}
+Leon~B. Lucy.
+\newblock A numerical approach to the testing of the fission hypothesis.
+\newblock {\em The Astronomical Journal}, 82:1013--1024, 1977.
+
+\bibitem{morris1997}
+Joseph~P. Morris, Patrick~J. Fox, and Yi~Zhu.
+\newblock Modeling low reynolds number incompressible flows using sph.
+\newblock {\em Journal of Computational Physics}, 136(1):214--226, 1997.
+
+\end{thebibliography}

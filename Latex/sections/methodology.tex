@@ -1,0 +1,36 @@
+\section{Methodology}
+
+\subsection{SPH Approximation}
+
+For a quantity $A$ evaluated at particle $i$, the SPH approximation is written
+as
+\begin{equation}
+    A_i \approx \sum_j m_j \frac{A_j}{\rho_j} W(\lVert \mathbf{r}_i-\mathbf{r}_j\rVert,h),
+\end{equation}
+where $m_j$ is the particle mass, $\rho_j$ is the density, $h$ is the smoothing
+radius, and $W$ is a compact-support kernel.
+
+The implementation first constructs neighbor lists for particles within the
+smoothing radius. It then estimates density, computes pressure from the density
+error relative to the rest density, and combines pressure, viscosity, and
+gravity forces before integrating position and velocity.
+
+\subsection{Software Structure}
+
+The solver is separated into the following components:
+\begin{itemize}
+    \item \texttt{Particle} stores particle state and physical properties.
+    \item \texttt{NeighborSearch} constructs local particle neighborhoods.
+    \item \texttt{SPHSolver} performs density, force, and integration steps.
+    \item \texttt{Renderer} displays the scene and exposes runtime controls.
+\end{itemize}
+
+This separation allows the numerical code and neighbor-search behavior to be
+tested without requiring an interactive graphics window.
+
+\subsection{Experimental Setup}
+
+Experiments use the startup scene defined in \texttt{src/main.cpp}. The scene
+contains movable particles and fixed particles forming a simple container. The
+main parameters are the rest density, gas constant, viscosity, smoothing radius,
+timestep, and gravitational acceleration.
