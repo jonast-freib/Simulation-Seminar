@@ -11,6 +11,10 @@ public:
     void handleEvents();
     void clear();
     void drawParticles(const std::vector<Particle>& particles);
+    // Pressure mapped to the top of the colour scale; <= 0 means per-frame min/max.
+    void setReferencePressure(double pressure);
+    // Forget the time-averaged pressures (call when the particle set is replaced).
+    void resetColorSmoothing();
     void display();
     // UI sliders
     void addSlider(const std::string& name, float minValue, float maxValue, float initialValue, float x, float y, float width = 200.f);
@@ -29,6 +33,8 @@ private:
     sf::Texture particleTexture;
     std::vector<sf::Vertex> particleVertices;
     float particleRadius;
+    double referencePressure = 0.0;
+    std::vector<double> smoothedPressure;
     sf::Font font;
     sf::Text fpsText;
     sf::Clock fpsClock;

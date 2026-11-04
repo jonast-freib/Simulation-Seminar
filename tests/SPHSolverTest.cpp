@@ -1,3 +1,5 @@
+// Keep assert() active in optimised (NDEBUG) builds.
+#undef NDEBUG
 #include <cassert>
 #include <vector>
 
@@ -14,12 +16,15 @@ int main()
     {
         particles.emplace_back(Vector2D(x * 5.0, 0.0), mass, true);
     }
-    particles.emplace_back(Vector2D(0.0, 4.0), mass, false);
+    // Start inside the wall safety radius (half a particle spacing) so the
+    // projection must push the particle out and cancel its inward velocity.
+    const double collisionRadius = 0.5 * SPHSolver::particleSpacingFor(solver.getSmoothingRadius());
+    particles.emplace_back(Vector2D(0.0, 0.5 * collisionRadius), mass, false);
     particles.back().velocity.y = -1.0;
 
     solver.step(particles, 0.001);
 
     const Particle &fluid = particles.back();
-    assert(fluid.position.y >= 0.5 * solver.getSmoothingRadius());
+    assert(fluid.position.y >= collisionRadius - 1e-9);
     assert(fluid.velocity.y >= 0.0);
 }

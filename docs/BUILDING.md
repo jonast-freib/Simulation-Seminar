@@ -36,20 +36,25 @@ Run the simulator from the repository root so relative runtime resources, if add
 ./build/sph_solver
 ```
 
-The current scene is created in `src/main.cpp`. The active startup preset is a single movable particle above a fixed U-shaped block.
+The test scenes are defined in `src/Scenes.cpp`. The app starts with the **dam break**: a fluid column in the lower-left corner of a tank collapses. The **hydrostatic column** fills the bottom of a narrower tank with fluid at rest; density should stay within about 1% of the rest density and pressure should grow linearly with depth.
+
+Each frame advances 1/60 s of simulated time. The solver splits it into substeps whose size is chosen from the acoustic CFL, force and viscosity limits. Once per second the console prints the substep count, the current dt, the maximum density error and the Mach number.
 
 ## Runtime controls
 
-The window displays sliders for:
+The window displays debug sliders for:
 
 - Rest density
-- Gas constant
+- Speed of sound
 - Viscosity
 - Smoothing radius
-- Timestep
 - Gravity
 
-The **Reset** button restores particle positions and clears velocity and acceleration for the active scene. Fixed particles remain fixed by the solver.
+Slider values are applied once per second. The buttons are:
+
+- **Reset** rebuilds the active scene with its default parameters.
+- **Dam** loads the dam-break scene.
+- **Column** loads the hydrostatic-column scene.
 
 ## Clean rebuild
 

@@ -186,31 +186,66 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
     const float texWidth = static_cast<float>(particleTexture.getSize().x);
     const float texHeight = static_cast<float>(particleTexture.getSize().y);
 
-    // determine pressure bounds for coloring
-    double minP = std::numeric_limits<double>::infinity();
-    double maxP = -std::numeric_limits<double>::infinity();
-    for (const auto &p : particles)
+    // Pressure colour scale. With a reference pressure set (e.g. the
+    // hydrostatic pressure rho0 * g * H at the tank bottom) the scale is fixed,
+    // so resting fluid shows a depth gradient and impacts saturate to red.
+    // Otherwise fall back to the current min/max of the fluid particles.
+    double minP = 0.0;
+    double maxP = referencePressure;
+    if (maxP <= 0.0)
     {
-        minP = std::min(minP, p.pressure);
-        maxP = std::max(maxP, p.pressure);
-    }
-    if (minP == std::numeric_limits<double>::infinity())
-    {
-        minP = 0.0;
-        maxP = 1.0;
+        minP = std::numeric_limits<double>::infinity();
+        maxP = -std::numeric_limits<double>::infinity();
+        for (const auto &p : particles)
+        {
+            if (p.fixed)
+                continue;
+            minP = std::min(minP, p.pressure);
+            maxP = std::max(maxP, p.pressure);
+        }
+        if (minP == std::numeric_limits<double>::infinity())
+        {
+            minP = 0.0;
+            maxP = 1.0;
+        }
     }
 
-    auto pressureToColor = [&](const Particle &particle) -> sf::Color
+    // Temporal smoothing of the displayed pressure. Weakly compressible SPH
+    // carries acoustic pressure oscillations much faster than the frame rate;
+    // sampled once per frame they make the colours blink. An exponential
+    // moving average per particle shows the underlying pressure field.
+    constexpr double smoothingTimeConstant = 0.15; // seconds
+    constexpr double frameTime = 1.0 / 60.0;
+    const double blend = 1.0 - std::exp(-frameTime / smoothingTimeConstant);
+    if (smoothedPressure.size() != particles.size())
     {
-        // If CFL violated, show purple
+        smoothedPressure.clear();
+        for (const auto &p : particles)
+            smoothedPressure.push_back(p.pressure);
+    }
+    else
+    {
+        for (std::size_t i = 0; i < particles.size(); ++i)
+            smoothedPressure[i] += blend * (particles[i].pressure - smoothedPressure[i]);
+    }
+
+    auto pressureToColor = [&](std::size_t index, const Particle &particle) -> sf::Color
+    {
+        // Walls are drawn neutral; their pressure is only a boundary condition.
+        if (particle.fixed)
+        {
+            return sf::Color(140, 140, 140, 220);
+        }
+
+        // If CFL violated, show red
         if (particle.cflViolated)
         {
-            return sf::Color(200, 0, 0, 220); // Purple
+            return sf::Color(200, 0, 0, 220);
         }
 
         double n = 0.0;
         if (maxP > minP)
-            n = (particle.pressure - minP) / (maxP - minP);
+            n = (smoothedPressure[index] - minP) / (maxP - minP);
         n = std::max(0.0, std::min(1.0, n));
         // simple blue -> cyan -> green -> yellow -> red mapping
         const double r = std::min(1.0, std::max(0.0, 1.5 * n));
@@ -227,7 +262,7 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
         const auto &particle = particles[i];
         const float cx = static_cast<float>(particle.position.x);
         const float cy = static_cast<float>(particle.position.y);
-        const sf::Color color = pressureToColor(particle);
+        const sf::Color color = pressureToColor(i, particle);
         const std::size_t baseIndex = i * 6;
 
         particleVertices[baseIndex + 0].position = {cx - halfSize, cy - halfSize};
@@ -287,6 +322,16 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
             window.draw(label);
         }
     }
+}
+
+void Renderer::setReferencePressure(double pressure)
+{
+    referencePressure = pressure;
+}
+
+void Renderer::resetColorSmoothing()
+{
+    smoothedPressure.clear();
 }
 
 void Renderer::display()
