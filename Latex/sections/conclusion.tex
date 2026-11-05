@@ -1,10 +1,21 @@
 \section{Conclusion}
 
-This project provides a small and inspectable SPH fluid solver with an
-interactive visualization and isolated tests for its core components. The
-separation between neighbor search, numerical integration, and rendering gives
-the implementation a useful basis for experiments.
+This project provides a small and inspectable two-dimensional SPH solver with a
+weakly compressible equation of state, adaptive time stepping, extrapolated
+wall pressures, an interactive visualisation, and a reproducible experiment
+pipeline.
 
-Future work could compare different smoothing kernels, improve boundary
-handling, and benchmark spatial acceleration structures with larger particle
-sets.
+With the speed of sound set to ten times the free-fall velocity, the settled
+hydrostatic column keeps its density within about $0.6\,\%$ of the rest density
+and reproduces the hydrostatic pressure to within a few percent when averaged
+over time. The dam break stays below $1.5\,\%$ density error until the water
+hits the opposite wall. The parameter studies show that the speed of sound
+trades compressibility against cost and pressure noise, that viscosity is needed
+to damp acoustic oscillations but slows the flow, and that the smoothing length
+must stay close to $1.3$ particle spacings: larger values trigger the pairing
+instability, smaller ones freeze the particles on their initial lattice.
+
+Future work could replace the all-pairs neighbour search by a uniform grid to
+reach higher resolutions, reduce the pressure noise with density diffusion
+($\delta$-SPH) or an implicit pressure solver (IISPH, DFSPH), and compare the
+dam-break front quantitatively with the measurements of Martin and Moyce.

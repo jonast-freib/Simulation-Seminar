@@ -7,7 +7,7 @@ SPHSolver::SPHSolver(double smoothingRadius,
                      double speedOfSound,
                      double viscosity,
                      const Vector2D &gravity)
-    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius), restDensity(restDensity), speedOfSound(speedOfSound), viscosity(viscosity), gravity(gravity), boundaryWidth(0.0), boundaryHeight(0.0), boundaryDamping(0.5), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
+    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius), restDensity(restDensity), speedOfSound(speedOfSound), viscosity(viscosity), gravity(gravity), boundaryWidth(0.0), boundaryHeight(0.0), boundaryDamping(0.5), kernelSpacingRatio(defaultKernelSpacingRatio), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
 {
 }
 
@@ -67,6 +67,27 @@ double SPHSolver::getSpeedOfSound() const
 double SPHSolver::getRestDensity() const
 {
     return restDensity;
+}
+
+void SPHSolver::setKernelSpacingRatio(double ratio)
+{
+    kernelSpacingRatio = ratio;
+    particleMass = computeParticleMass();
+}
+
+double SPHSolver::getKernelSpacingRatio() const
+{
+    return kernelSpacingRatio;
+}
+
+double SPHSolver::getParticleSpacing() const
+{
+    return smoothingRadius / kernelSpacingRatio;
+}
+
+std::size_t SPHSolver::getNeighborCount(std::size_t particleIndex) const
+{
+    return neighborSearch.getNeighbors(particleIndex).size();
 }
 
 double SPHSolver::getLastTimeStep() const
@@ -459,7 +480,7 @@ void SPHSolver::integrate(
             // Safety net only: resting fluid sits a full spacing away from
             // the wall particles, so this projection does not engage unless
             // a particle is about to penetrate the wall.
-            const double collisionRadius = 0.5 * particleSpacingFor(smoothingRadius);
+            const double collisionRadius = 0.5 * getParticleSpacing();
             const double collisionRadiusSquared =
                 collisionRadius * collisionRadius;
             std::size_t closestFixed = particles.size();
@@ -643,7 +664,7 @@ Vector2D SPHSolver::cubicSplineGradient(
 double SPHSolver::computeParticleMass() const
 {
     const double spacing =
-        particleSpacingFor(smoothingRadius);
+        getParticleSpacing();
 
     return restDensity *
            spacing *

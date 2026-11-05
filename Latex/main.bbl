@@ -1,13 +1,53 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
+
+\bibitem{adami2012}
+Stefan Adami, Xiangyu~Y. Hu, and Nikolaus~A. Adams.
+\newblock A generalized wall boundary condition for smoothed particle hydrodynamics.
+\newblock {\em Journal of Computational Physics}, 231(21):7057--7075, 2012.
+
+\bibitem{akinci2012}
+Nadir Akinci, Markus Ihmsen, Gizem Akinci, Barbara Solenthaler, and Matthias Teschner.
+\newblock Versatile rigid-fluid coupling for incompressible {SPH}.
+\newblock {\em ACM Transactions on Graphics}, 31(4):62:1--62:8, 2012.
+
+\bibitem{becker2007}
+Markus Becker and Matthias Teschner.
+\newblock Weakly compressible {SPH} for free surface flows.
+\newblock In {\em Proceedings of the 2007 ACM SIGGRAPH/Eurographics Symposium on Computer Animation}, pages 209--217, 2007.
+
+\bibitem{dehnen2012}
+Walter Dehnen and Hossam Aly.
+\newblock Improving convergence in smoothed particle hydrodynamics simulations without pairing instability.
+\newblock {\em Monthly Notices of the Royal Astronomical Society}, 425(2):1068--1082, 2012.
 
 \bibitem{lucy1977}
 Leon~B. Lucy.
 \newblock A numerical approach to the testing of the fission hypothesis.
 \newblock {\em The Astronomical Journal}, 82:1013--1024, 1977.
 
+\bibitem{martin1952}
+J.~C. Martin and W.~J. Moyce.
+\newblock Part {IV}. an experimental study of the collapse of liquid columns on a rigid horizontal plane.
+\newblock {\em Philosophical Transactions of the Royal Society of London. Series A}, 244(882):312--324, 1952.
+
+\bibitem{monaghan1992}
+Joseph~J. Monaghan.
+\newblock Smoothed particle hydrodynamics.
+\newblock {\em Annual Review of Astronomy and Astrophysics}, 30:543--574, 1992.
+
+\bibitem{monaghan1994}
+Joseph~J. Monaghan.
+\newblock Simulating free surface flows with {SPH}.
+\newblock {\em Journal of Computational Physics}, 110(2):399--406, 1994.
+
 \bibitem{morris1997}
 Joseph~P. Morris, Patrick~J. Fox, and Yi~Zhu.
 \newblock Modeling low reynolds number incompressible flows using sph.
 \newblock {\em Journal of Computational Physics}, 136(1):214--226, 1997.
+
+\bibitem{ritter1892}
+A.~Ritter.
+\newblock Die {F}ortpflanzung der {W}asserwellen.
+\newblock {\em Zeitschrift des Vereines Deutscher Ingenieure}, 36:947--954, 1892.
 
 \end{thebibliography}

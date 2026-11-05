@@ -23,10 +23,15 @@
 
 \maketitle
 \begin{abstract}
-This paper documents the design and evaluation of a small two-dimensional smoothed
-particle hydrodynamics (SPH) solver. The implementation combines particle-based
-fluid dynamics, radius-based neighbor search, numerical integration, and an
-interactive renderer.
+This paper documents the design and evaluation of a small two-dimensional
+smoothed particle hydrodynamics (SPH) solver. The fluid is modelled as weakly
+compressible with a Tait equation of state, the time step adapts to the
+acoustic, force, and viscous stability limits, and walls are represented by
+fixed particles with pressures extrapolated from the fluid. The solver is
+evaluated on a hydrostatic column and a dam break, and parameter studies
+quantify how the speed of sound, the viscosity, and the ratio of smoothing
+length to particle spacing affect compressibility, pressure noise, cost, and
+particle ordering.
 \end{abstract}
 
 \tableofcontents
@@ -35,6 +40,9 @@ interactive renderer.
 \input{sections/methodology}
 \input{sections/results}
 \input{sections/conclusion}
+
+% Place all remaining figures before the references.
+\clearpage
 
 \bibliographystyle{plain}
 \bibliography{references}

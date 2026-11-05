@@ -237,6 +237,12 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
             return sf::Color(140, 140, 140, 220);
         }
 
+        // Plain mode: one colour for all fluid particles.
+        if (!colorByPressure)
+        {
+            return sf::Color(42, 120, 214, 220);
+        }
+
         // If CFL violated, show red
         if (particle.cflViolated)
         {
@@ -332,6 +338,16 @@ void Renderer::setReferencePressure(double pressure)
 void Renderer::resetColorSmoothing()
 {
     smoothedPressure.clear();
+}
+
+void Renderer::setColorByPressure(bool enabled)
+{
+    colorByPressure = enabled;
+}
+
+bool Renderer::isColorByPressure() const
+{
+    return colorByPressure;
 }
 
 void Renderer::display()

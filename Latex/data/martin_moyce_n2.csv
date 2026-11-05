@@ -1,0 +1,5 @@
+# Martin & Moyce (1952), collapse of a liquid column with aspect ratio n^2 = H/a = 2:
+# surge-front position Z/a against T = t*sqrt(g/a) (some sources plot T*n instead; check the
+# axis definition in the original paper). Fill in the measured points from the original
+# table/figure; make_plots.py adds them to dam_front.pdf automatically once rows exist.
+T,Z_over_a

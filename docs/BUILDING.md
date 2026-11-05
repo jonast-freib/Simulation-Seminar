@@ -55,6 +55,7 @@ Slider values are applied once per second. The buttons are:
 - **Reset** rebuilds the active scene with its default parameters.
 - **Dam** loads the dam-break scene.
 - **Column** loads the hydrostatic-column scene.
+- **Color** toggles the fluid colouring between the pressure map and plain blue (wall particles stay grey).
 
 ## Clean rebuild
 

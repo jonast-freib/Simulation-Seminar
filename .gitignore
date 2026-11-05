@@ -42,3 +42,12 @@ CMakeDirectoryInformation.cmake
 *.tmp
 *.swp
 *.DS_Store
+
+# LaTeX build artefacts (the generated data/ and figures/ are kept)
+Latex/*.aux
+Latex/*.bbl
+Latex/*.blg
+Latex/*.log
+Latex/*.out
+Latex/*.toc
+Latex/*.synctex.gz

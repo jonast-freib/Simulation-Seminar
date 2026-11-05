@@ -6,13 +6,10 @@
 
 class SPHSolver {
 public:
-	// Ratio of smoothing length to initial particle spacing, h / dx. The cubic
-	// spline suffers from the pairing instability (particles clump into rows)
-	// when h / dx is too large; 1.3 gives ~20 neighbours in 2D.
-	static constexpr double kernelSpacingRatio = 1.3;
-
-	// Initial particle spacing that matches a given smoothing length.
-	static double particleSpacingFor(double smoothingRadius) { return smoothingRadius / kernelSpacingRatio; }
+	// Default ratio of smoothing length to initial particle spacing, h / dx.
+	// The cubic spline suffers from the pairing instability (particles clump
+	// into rows) when h / dx is too large; 1.3 gives ~20 neighbours in 2D.
+	static constexpr double defaultKernelSpacingRatio = 1.3;
 
 	// speedOfSound: numerical speed of sound c of the weakly compressible fluid.
 	// Choose c >= 10 * expected maximum flow speed to keep density errors ~1%.
@@ -29,11 +26,19 @@ public:
 	void setViscosity(double mu);
 	void setSmoothingRadius(double h);
 	void setGravity(const Vector2D& g);
+	void setKernelSpacingRatio(double ratio);
 
 	double getParticleMass() const;
 	double getSmoothingRadius() const;
 	double getSpeedOfSound() const;
 	double getRestDensity() const;
+	double getKernelSpacingRatio() const;
+
+	// Initial particle spacing dx = h / (h/dx) that the particle mass is calibrated for.
+	double getParticleSpacing() const;
+
+	// Number of neighbours (within the 2h kernel support) of a particle in the last step.
+	std::size_t getNeighborCount(std::size_t particleIndex) const;
 
 	// Advance the simulation state by exactly one step of size dt.
 	void step(std::vector<Particle>& particles, double dt);
@@ -76,6 +81,7 @@ private:
 	double boundaryHeight;
 	double boundaryDamping;
 
+	double kernelSpacingRatio;
 	double particleMass;
 	double lastTimeStep;
 

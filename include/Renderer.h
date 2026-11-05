@@ -15,6 +15,9 @@ public:
     void setReferencePressure(double pressure);
     // Forget the time-averaged pressures (call when the particle set is replaced).
     void resetColorSmoothing();
+    // Toggle between pressure colouring and a plain colour for fluid particles.
+    void setColorByPressure(bool enabled);
+    bool isColorByPressure() const;
     void display();
     // UI sliders
     void addSlider(const std::string& name, float minValue, float maxValue, float initialValue, float x, float y, float width = 200.f);
@@ -35,6 +38,7 @@ private:
     float particleRadius;
     double referencePressure = 0.0;
     std::vector<double> smoothedPressure;
+    bool colorByPressure = true;
     sf::Font font;
     sf::Text fpsText;
     sf::Clock fpsClock;

@@ -49,12 +49,14 @@ int main()
     {
         ResetButton,
         DamBreakButton,
-        ColumnButton
+        ColumnButton,
+        ColorButton
     };
     const float buttonX = sliderX + 240.f;
     renderer.addButton("Reset", buttonX, 50.f, 80.f, 28.f);
     renderer.addButton("Dam", buttonX, 90.f, 80.f, 28.f);
     renderer.addButton("Column", buttonX, 130.f, 80.f, 28.f);
+    renderer.addButton("Color", buttonX, 170.f, 80.f, 28.f);
 
     enum class SceneKind
     {
@@ -108,6 +110,11 @@ int main()
         if (renderer.consumeButtonPress(ColumnButton))
         {
             loadScene(SceneKind::HydrostaticColumn);
+        }
+        if (renderer.consumeButtonPress(ColorButton))
+        {
+            // Toggle fluid colouring: pressure map <-> plain blue (walls stay grey).
+            renderer.setColorByPressure(!renderer.isColorByPressure());
         }
 
         ++frameCounter;

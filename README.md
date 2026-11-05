@@ -45,7 +45,10 @@ See [docs/BUILDING.md](docs/BUILDING.md) for a fuller setup walkthrough and [doc
 | `src/main.cpp` | Application setup, presets, event loop, and simulation stepping |
 | `src/SPHSolver.cpp` | SPH density, pressure, force, and integration calculations |
 | `src/NeighborSearch.cpp` | Neighbor list construction |
+| `src/Scenes.cpp` | Test scenes (dam break, hydrostatic column) and their parameters |
+| `tools/experiments.cpp` | Headless experiment runner that writes the paper's CSV data |
 | `src/Renderer.cpp` | SFML window, particle drawing, sliders, and buttons |
 | `include/` | Public headers for the simulation components |
 | `tests/` | Executable test programs |
 | `docs/` | Developer and maintenance notes |
+| `Latex/` | Seminar paper, experiment data, plot script and figures |

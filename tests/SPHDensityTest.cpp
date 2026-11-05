@@ -33,7 +33,7 @@ static void testLatticeInteriorReachesRestDensity()
     SPHSolver solver(h, rho0, 500.0, 0.0, Vector2D(0.0, 0.0));
     solver.setBounds(1000.0, 1000.0);
 
-    const double spacing = SPHSolver::particleSpacingFor(h);
+    const double spacing = solver.getParticleSpacing();
     const int n = 21;
     std::vector<Particle> particles;
     for (int y = 0; y < n; ++y)

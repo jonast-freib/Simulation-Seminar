@@ -3,22 +3,27 @@
 Particle-based methods are useful for simulating fluids with free surfaces and
 changing topology. Smoothed particle hydrodynamics represents a continuum by a
 set of moving particles and approximates field quantities using a smoothing
-kernel \cite{lucy1977,morris1997}.
+kernel \cite{lucy1977,monaghan1992}.
 
 The goal of this project is to implement and inspect a compact two-dimensional
-SPH solver in C++17. The application includes density and pressure estimation,
-viscosity, gravity, boundary particles, and an interactive SFML renderer. This
-paper describes the numerical model, the software architecture, and the tests
-used to assess the implementation.
+SPH solver in C++17. The solver treats the fluid as weakly compressible
+\cite{monaghan1994,becker2007}: pressure follows a stiff equation of state, the
+time step adapts to the acoustic stability limit, and solid walls are made of
+fixed particles whose pressure is extrapolated from the fluid
+\cite{adami2012}. An interactive SFML renderer displays the simulation, and a
+headless experiment runner produces the data for this paper. This paper
+describes the numerical model and the software structure, and evaluates the
+solver on a hydrostatic column and a dam break.
 
 \section{Research Questions}
 
 The evaluation focuses on three questions:
 \begin{enumerate}
-    \item Does the solver preserve the expected qualitative behavior of a small
-    fluid scene?
-    \item How does the radius-based neighbor search affect the simulation's
-    computational work?
-    \item Which implementation parameters have the greatest visible effect on
-    stability and motion?
+    \item How accurately does the solver reproduce a known solution
+    (hydrostatic pressure) and a classical experiment (dam break,
+    \cite{martin1952}), and how large is the density error?
+    \item How do the numerical parameters (speed of sound, viscosity, and the
+    ratio of smoothing length to particle spacing) affect compressibility,
+    pressure noise, cost, and the flow itself?
+    \item Which artefacts limit the method, and where do they come from?
 \end{enumerate}

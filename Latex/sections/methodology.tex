@@ -8,12 +8,119 @@ as
     A_i \approx \sum_j m_j \frac{A_j}{\rho_j} W(\lVert \mathbf{r}_i-\mathbf{r}_j\rVert,h),
 \end{equation}
 where $m_j$ is the particle mass, $\rho_j$ is the density, $h$ is the smoothing
-radius, and $W$ is a compact-support kernel.
+length, and $W$ is a compact-support kernel \cite{lucy1977,monaghan1992}.
+We use the two-dimensional cubic spline with support radius $2h$,
+\begin{equation}
+    W(q,h) = \frac{5}{14\pi h^2}
+    \begin{cases}
+        (2-q)^3 - 4(1-q)^3, & 0 \le q < 1,\\
+        (2-q)^3,            & 1 \le q < 2,\\
+        0,                  & q \ge 2,
+    \end{cases}
+    \qquad q = \frac{\lVert \mathbf{r}_i-\mathbf{r}_j\rVert}{h}.
+\end{equation}
 
-The implementation first constructs neighbor lists for particles within the
-smoothing radius. It then estimates density, computes pressure from the density
-error relative to the rest density, and combines pressure, viscosity, and
-gravity forces before integrating position and velocity.
+Particles are initialised on a square lattice with spacing $\Delta x$ and
+carry the mass $m = \rho_0 \Delta x^2$, so that a particle inside a regular
+lattice sums to the rest density $\rho_0$. The smoothing length is set to
+$h = 1.3\,\Delta x$, which gives about 20 neighbours per particle. Larger ratios
+make the cubic spline prone to the pairing instability \cite{dehnen2012}, in
+which particles clump into rows; this is examined in
+Section~\ref{sec:pairing}.
+
+\subsection{Density and Equation of State}
+
+The density is obtained by direct summation over all particles within the
+kernel support, including the particle itself and the wall particles,
+\begin{equation}
+    \rho_i = m_i W(0,h) + \sum_{j \ne i} m_j W_{ij}.
+\end{equation}
+The fluid is treated as weakly compressible \cite{monaghan1994,becker2007}.
+Pressure follows the Tait equation
+\begin{equation}
+    p_i = B\left[\left(\frac{\rho_i}{\rho_0}\right)^{\gamma} - 1\right],
+    \qquad B = \frac{\rho_0 c^2}{\gamma}, \qquad \gamma = 7,
+    \label{eq:tait}
+\end{equation}
+where $c$ is the numerical speed of sound; negative pressures are set to zero
+to avoid tensile clumping at the free surface. The density error scales with
+the squared Mach number $\mathrm{Ma}^2 = (v/c)^2$, so $c$ is chosen as ten times
+the largest expected flow speed. Estimating that speed by free fall from the top
+of the fluid body of height $H$ gives
+\begin{equation}
+    c = 10\sqrt{2gH},
+\end{equation}
+which targets density errors of about one percent.
+
+\subsection{Momentum Equation}
+
+The acceleration of a fluid particle is the sum of a pressure term, a viscous
+term and gravity,
+\begin{align}
+    \mathbf{a}_i^{p} &= -\sum_j m_j \left(\frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}\right) \nabla_i W_{ij},\\
+    \mathbf{a}_i^{\nu} &= 2\nu \sum_j \frac{m_j}{\rho_j}
+        \frac{\mathbf{v}_{ij}\cdot\mathbf{r}_{ij}}{\lVert\mathbf{r}_{ij}\rVert^2 + 0.01h^2}\,\nabla_i W_{ij},\\
+    \mathbf{a}_i &= \mathbf{a}_i^{p} + \mathbf{a}_i^{\nu} + \mathbf{g},
+\end{align}
+with $\mathbf{r}_{ij} = \mathbf{r}_i - \mathbf{r}_j$ and
+$\mathbf{v}_{ij} = \mathbf{v}_i - \mathbf{v}_j$. The symmetric pressure term
+conserves linear momentum; the viscous term follows
+\cite{monaghan1992,morris1997} and also damps the acoustic oscillations that a
+weakly compressible fluid carries.
+
+\subsection{Boundary Conditions}
+
+Walls are built from fixed particles placed on the same lattice as the fluid.
+Enough layers are used to fill the full kernel support of a fluid particle
+touching the wall ($\lceil 2h/\Delta x \rceil = 3$ layers for $h = 1.3\Delta x$),
+so that wall particles enter the density sum like fluid at rest density.
+
+Wall particles carry no state of their own, so a pressure has to be assigned to
+them. If the wall term used only $p_i/\rho_i^2$ \cite{akinci2012}, the wall
+would provide half the support that a fluid neighbour provides; the first fluid
+layer then has to compress until its pressure is roughly doubled, which pushes
+the second layer away and leaves a visible gap above the floor. Instead the wall
+pressure is extrapolated from the surrounding fluid following
+Adami et al.~\cite{adami2012},
+\begin{equation}
+    p_b = \frac{\sum_f p_f W_{bf} + \mathbf{g}\cdot\sum_f \rho_f\,(\mathbf{r}_b - \mathbf{r}_f)\,W_{bf}}{\sum_f W_{bf}},
+\end{equation}
+where the sums run over the fluid neighbours $f$ of the wall particle $b$ and the
+second term adds the hydrostatic pressure difference across the wall. The wall
+density $\rho_b$ follows from inverting Eq.~\eqref{eq:tait}, and the fluid--wall
+pressure force uses the same symmetric form as the fluid--fluid force.
+
+As a safety net against penetration during violent impacts, a fluid particle
+that comes closer than $\Delta x/2$ to a wall particle is projected back to that
+distance and its normal velocity is reflected with a restitution of $0.5$.
+Fluid at rest sits a full spacing away from the wall, so the projection does not
+act in quiescent regions.
+
+\subsection{Time Integration}
+
+Positions and velocities are advanced with the semi-implicit (symplectic) Euler
+scheme,
+$\mathbf{v}^{n+1} = \mathbf{v}^{n} + \Delta t\,\mathbf{a}^{n}$,
+$\mathbf{r}^{n+1} = \mathbf{r}^{n} + \Delta t\,\mathbf{v}^{n+1}$.
+The time step is chosen adaptively in every substep as the most restrictive of
+the acoustic CFL, force, and viscous conditions \cite{monaghan1992},
+\begin{equation}
+    \Delta t = \min\left(
+        0.4\,\frac{h}{c + \max_i \lVert\mathbf{v}_i\rVert},\;
+        0.25\sqrt{\frac{h}{\max_i \lVert\mathbf{a}_i\rVert}},\;
+        0.125\,\frac{h^2}{\nu}
+    \right).
+\end{equation}
+Each rendered frame advances the simulation by $1/60\,\mathrm{s}$, split into as
+many substeps as these limits require. For the stiff fluids used here the
+acoustic condition dominates.
+
+\subsection{Neighbour Search}
+
+Neighbour lists are rebuilt once per substep by testing all particle pairs
+against the kernel support radius $2h$. The cost of this search is
+$\mathcal{O}(N^2)$; it is adequate for the scene sizes used in this work
+(about $1.6\times10^3$ particles) but is the main limitation for larger scenes.
 
 \subsection{Software Structure}
 
@@ -21,16 +128,52 @@ The solver is separated into the following components:
 \begin{itemize}
     \item \texttt{Particle} stores particle state and physical properties.
     \item \texttt{NeighborSearch} constructs local particle neighborhoods.
-    \item \texttt{SPHSolver} performs density, force, and integration steps.
+    \item \texttt{SPHSolver} performs the density, wall-pressure, force, and
+          integration steps and chooses the adaptive time step.
+    \item \texttt{Scenes} builds the test scenes (tank walls, fluid body, and
+          matching solver parameters).
     \item \texttt{Renderer} displays the scene and exposes runtime controls.
 \end{itemize}
 
-This separation allows the numerical code and neighbor-search behavior to be
-tested without requiring an interactive graphics window.
+This separation allows the numerical code to be tested and run without an
+interactive graphics window. A headless program (\texttt{sph\_experiments})
+runs all experiments of Section~\ref{sec:results} and writes their data as CSV
+files, from which the figures are generated.
 
 \subsection{Experimental Setup}
 
-Experiments use the startup scene defined in \texttt{src/main.cpp}. The scene
-contains movable particles and fixed particles forming a simple container. The
-main parameters are the rest density, gas constant, viscosity, smoothing radius,
-timestep, and gravitational acceleration.
+All quantities are given in screen units (pixels and seconds). Results are
+reported in dimensionless form ($p/\rho_0 g H$, $Z/a$, $T = t\sqrt{g/a}$), so the
+choice of units does not affect them. Two scenes are used
+(Table~\ref{tab:setup}):
+\begin{itemize}
+    \item \textbf{Hydrostatic column.} An open tank of width $300\,\mathrm{px}$ is
+          filled to $H = 400\,\mathrm{px}$ with fluid at rest. The column has to
+          settle to the hydrostatic pressure $p = \rho_0 g d$ at depth $d$.
+    \item \textbf{Dam break.} A fluid column of width $a = 200\,\mathrm{px}$ and
+          height $H = 400\,\mathrm{px}$ (aspect ratio $n^2 = H/a = 2$) stands in
+          the lower-left corner of a closed tank of width $800\,\mathrm{px}$ and
+          collapses under gravity at $t = 0$ \cite{martin1952}.
+\end{itemize}
+
+\begin{table}[ht]
+    \centering
+    \caption{Default parameters of both scenes. Parameter studies vary one
+    quantity at a time.}
+    \label{tab:setup}
+    \begin{tabular}{lll}
+        \toprule
+        Quantity & Symbol & Value \\
+        \midrule
+        Particle spacing & $\Delta x$ & $10\,\mathrm{px}$ \\
+        Smoothing length & $h$ & $13\,\mathrm{px}$ ($1.3\,\Delta x$) \\
+        Rest density & $\rho_0$ & $300$ \\
+        Gravity & $g$ & $200\,\mathrm{px/s^2}$ \\
+        Speed of sound & $c$ & $10\sqrt{2gH} = 4000\,\mathrm{px/s}$ \\
+        Viscosity & $\nu$ & $150\,\mathrm{px^2/s}$ \\
+        Fluid / wall particles (column) & & $1200$ / $420$ \\
+        Fluid / wall particles (dam break) & & $800$ / $828$ \\
+        Frame time & & $1/60\,\mathrm{s}$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}

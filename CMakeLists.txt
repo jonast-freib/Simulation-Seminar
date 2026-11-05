@@ -61,3 +61,13 @@ add_executable(hydrostatic_test
 
 target_link_libraries(hydrostatic_test PRIVATE SFML::Graphics)
 add_test(NAME HydrostaticTest COMMAND hydrostatic_test)
+
+# Headless experiment runner that writes the CSV data for the paper's figures.
+find_package(Threads REQUIRED)
+add_executable(sph_experiments
+    tools/experiments.cpp
+    src/Scenes.cpp
+    src/SPHSolver.cpp
+    src/NeighborSearch.cpp
+)
+target_link_libraries(sph_experiments PRIVATE SFML::Graphics Threads::Threads)

@@ -4,36 +4,19 @@
 
 namespace
 {
-// Default physical setup (window units: pixels and seconds).
-constexpr double smoothingRadius = 13.0; // particle spacing 10 px at h / dx = 1.3
-constexpr double restDensity = 300.0;
-constexpr double gravity = 200.0;
-constexpr double viscosity = 150.0;
-
-double particleSpacing(double h)
-{
-    return SPHSolver::particleSpacingFor(h);
-}
-
-double particleMass(double rho0, double h)
-{
-    const double spacing = particleSpacing(h);
-    return rho0 * spacing * spacing;
-}
-
 // Number of fixed-particle layers so the walls fill the full kernel support
 // (2h) of a fluid particle touching the wall.
-int wallLayerCount(double h)
+int wallLayerCount(double h, double spacing)
 {
-    return static_cast<int>(std::ceil(2.0 * h / particleSpacing(h)));
+    return static_cast<int>(std::ceil(2.0 * h / spacing));
 }
 
 // Weakly compressible SPH: c = 10 * v_max keeps density errors around 1%.
 // The fastest flow is roughly free fall from the top of the fluid body.
-double chooseSpeedOfSound(double g, double fluidHeight)
+double chooseSpeedOfSound(double factor, double g, double fluidHeight)
 {
     const double maxFlowSpeed = std::sqrt(2.0 * g * fluidHeight);
-    return 10.0 * maxFlowSpeed;
+    return factor * maxFlowSpeed;
 }
 
 Tank centeredTank(double windowWidth, double windowHeight, double width, double height, bool closedTop)
@@ -50,10 +33,10 @@ Tank centeredTank(double windowWidth, double windowHeight, double width, double 
 // The wall surface coincides with the tank edge: fluid particles sit half a
 // spacing inside it and the first wall layer half a spacing outside it, so
 // neighbouring fluid and wall particles are one spacing apart.
-void addTankWalls(std::vector<Particle> &particles, const Tank &tank, double h, double mass)
+void addTankWalls(std::vector<Particle> &particles, const Tank &tank,
+                  double h, double spacing, double mass)
 {
-    const double spacing = particleSpacing(h);
-    const int wallLayers = wallLayerCount(h);
+    const int wallLayers = wallLayerCount(h, spacing);
     const double right = tank.left + tank.width;
     const double bottom = tank.top + tank.height;
     const double outer = (wallLayers - 0.5) * spacing;
@@ -90,9 +73,8 @@ void addTankWalls(std::vector<Particle> &particles, const Tank &tank, double h, 
 // Fill [x0, x0 + width] x [bottom - height, bottom] with fluid on a square lattice
 // whose outermost particles sit half a spacing inside the region.
 void addFluidBlock(std::vector<Particle> &particles, double x0, double bottom,
-                   double width, double height, double h, double mass)
+                   double width, double height, double spacing, double mass)
 {
-    const double spacing = particleSpacing(h);
     const int columns = static_cast<int>(std::floor(width / spacing));
     const int rows = static_cast<int>(std::floor(height / spacing));
 
@@ -109,41 +91,48 @@ void addFluidBlock(std::vector<Particle> &particles, double x0, double bottom,
 }
 
 Scene makeTankScene(const std::string &name, const Tank &tank,
-                    double fluidWidth, double fluidHeight)
+                    double fluidWidth, double fluidHeight, const SceneOptions &options)
 {
+    const double spacing = options.particleSpacing;
+    const double h = options.kernelSpacingRatio * spacing;
+
     Scene scene;
     scene.name = name;
     scene.tank = tank;
+    scene.fluidWidth = fluidWidth;
     scene.fluidHeight = fluidHeight;
     scene.parameters = SceneParameters{
-        smoothingRadius,
-        restDensity,
-        chooseSpeedOfSound(gravity, fluidHeight),
-        viscosity,
-        gravity};
+        h,
+        options.restDensity,
+        chooseSpeedOfSound(options.speedOfSoundFactor, options.gravity, fluidHeight),
+        options.viscosity,
+        options.gravity,
+        options.kernelSpacingRatio};
 
-    const double mass = particleMass(restDensity, smoothingRadius);
-    addTankWalls(scene.particles, tank, smoothingRadius, mass);
+    const double mass = options.restDensity * spacing * spacing;
+    addTankWalls(scene.particles, tank, h, spacing, mass);
     addFluidBlock(scene.particles, tank.left, tank.top + tank.height,
-                  fluidWidth, fluidHeight, smoothingRadius, mass);
+                  fluidWidth, fluidHeight, spacing, mass);
     return scene;
 }
 } // namespace
 
-Scene makeDamBreakScene(double windowWidth, double windowHeight)
+Scene makeDamBreakScene(double windowWidth, double windowHeight, const SceneOptions &options)
 {
+    // Column a = 200, H = 400 (aspect n^2 = H / a = 2, as in Martin & Moyce 1952).
     const Tank tank = centeredTank(windowWidth, windowHeight, 800.0, 520.0, true);
-    return makeTankScene("Dam break", tank, 200.0, 400.0);
+    return makeTankScene("Dam break", tank, 200.0, 400.0, options);
 }
 
-Scene makeHydrostaticScene(double windowWidth, double windowHeight)
+Scene makeHydrostaticScene(double windowWidth, double windowHeight, const SceneOptions &options)
 {
     const Tank tank = centeredTank(windowWidth, windowHeight, 300.0, 520.0, false);
-    return makeTankScene("Hydrostatic column", tank, 300.0, 400.0);
+    return makeTankScene("Hydrostatic column", tank, 300.0, 400.0, options);
 }
 
 void applySceneParameters(SPHSolver &solver, const SceneParameters &parameters)
 {
+    solver.setKernelSpacingRatio(parameters.kernelSpacingRatio);
     solver.setRestDensity(parameters.restDensity);
     solver.setSmoothingRadius(parameters.smoothingRadius);
     solver.setSpeedOfSound(parameters.speedOfSound);
