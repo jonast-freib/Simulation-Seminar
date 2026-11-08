@@ -1,7 +1,7 @@
 // Headless experiment runner for the seminar paper.
 //
 // Runs the dam-break and hydrostatic-column scenes for the default setup and
-// for parameter sweeps (speed of sound, viscosity, h/dx) and writes CSV files
+// for parameter sweeps (stiffness coefficient k, viscosity, h/dx) and writes CSV files
 // that Latex/plots/make_plots.py turns into figures.
 //
 // Usage: sph_experiments <output-directory>
@@ -191,7 +191,8 @@ void writeSceneMeta()
             {"smoothing_length", q.smoothingRadius},
             {"kernel_spacing_ratio", q.kernelSpacingRatio},
             {"rest_density", q.restDensity},
-            {"speed_of_sound", q.speedOfSound},
+            {"stiffness", q.stiffness},
+            {"pressure_wave_speed", std::sqrt(7.0 * q.stiffness / q.restDensity)},
             {"viscosity", q.viscosity},
             {"gravity", q.gravity},
             {"fluid_particles", static_cast<double>(fluid)},
@@ -213,6 +214,7 @@ void runHydrostatic()
     const double averageTime = 2.0;
     std::vector<double> pressureSum(sim.scene.particles.size(), 0.0);
     std::vector<double> heightSum(sim.scene.particles.size(), 0.0);
+    std::vector<Vector2D> positionAtSettle(sim.scene.particles.size());
     int averagedFrames = 0;
 
     while (sim.time < settleTime + averageTime - 1e-9)
@@ -223,6 +225,11 @@ void runHydrostatic()
         series << sim.time << ',' << stats.maxError << ',' << stats.meanError << ',' << stats.meanKinetic << ','
                << stats.maxSpeed << ',' << (sim.substeps - before) << ',' << sim.solver.getLastTimeStep() << '\n';
 
+        if (averagedFrames == 0 && sim.time > settleTime)
+        {
+            for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+                positionAtSettle[i] = sim.scene.particles[i].position;
+        }
         if (sim.time > settleTime)
         {
             for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
@@ -246,6 +253,21 @@ void runHydrostatic()
                 << pressureSum[i] / averagedFrames << ',' << sim.rho0() * sim.gravity() * depth << '\n';
     }
     writeSnapshot(sim, "hydro_snapshot.csv");
+
+    // Residual motion of the "settled" column: mean drift velocity over the
+    // averaging window (displacement / time, y pointing up) and the speed.
+    const double driftTime = sim.time - settleTime;
+    std::ofstream drift = openCsv("hydro_drift.csv", "x,y,drift_vx,drift_vy,speed");
+    for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+    {
+        const Particle &p = sim.scene.particles[i];
+        if (p.fixed)
+            continue;
+        const Vector2D displacement = p.position - positionAtSettle[i];
+        drift << sim.xFromLeftWall(p) << ',' << sim.heightAboveFloor(p) << ','
+              << displacement.x / driftTime << ',' << -displacement.y / driftTime << ','
+              << std::hypot(p.velocity.x, p.velocity.y) << '\n';
+    }
     log("E1 hydrostatic column done");
 }
 
@@ -267,7 +289,7 @@ void runDamBreak()
         const DensityStats stats = densityStats(sim);
         const double T = sim.time * timeScale;
         front << sim.time << ',' << T << ',' << damFront(sim) / a << ',' << stats.maxError << ','
-              << stats.maxSpeed / sim.scene.parameters.speedOfSound << '\n';
+              << stats.maxSpeed / sim.solver.getPressureWaveSpeed() << '\n';
         if (nextSnapshot < snapshotTimes.size() && T >= snapshotTimes[nextSnapshot] - 1e-9)
         {
             char name[64];
@@ -363,8 +385,19 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
         Simulation sim(makeHydrostaticScene(windowWidth, windowHeight, options));
         const double settleTime = 5.0;
         const double measureTime = 2.0;
+        std::ofstream series = openCsv("sweep_hydro_" + tag + ".csv",
+                                       "t,mean_kinetic_energy,max_density_error,max_speed");
+        auto recordSeries = [&]()
+        {
+            const DensityStats stats = densityStats(sim);
+            series << sim.time << ',' << stats.meanKinetic << ',' << stats.maxError << ','
+                   << stats.maxSpeed << '\n';
+        };
         while (sim.time < settleTime - 1e-9)
+        {
             sim.advanceFrame();
+            recordSeries();
+        }
 
         const std::size_t n = sim.scene.particles.size();
         const double scale = sim.pressureScale();
@@ -387,6 +420,7 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
         while (sim.time < settleTime + measureTime - 1e-9)
         {
             sim.advanceFrame();
+            recordSeries();
             ++frames;
             for (std::size_t i = 0; i < n; ++i)
             {
@@ -482,13 +516,18 @@ int main(int argc, char **argv)
     std::filesystem::create_directories(outputDirectory);
     std::printf("Writing experiment data to %s\n", outputDirectory.c_str());
 
-    const std::vector<double> speedOfSoundFactors = {2.5, 5.0, 10.0, 20.0};
-    const std::vector<double> viscosities = {50.0, 150.0, 400.0, 1000.0};
+    // Stiffness k = scale * k_ref; scales 1/16 ... 4 correspond to pressure-wave
+    // speeds of 2.5, 5, 10 and 20 times the free-fall speed.
+    const std::vector<double> stiffnessScales = {0.0625, 0.25, 1.0, 4.0};
+    // Mirrored wall pressure needs nu >= ~600 to stay stable; 300 shows the instability.
+    const std::vector<double> viscosities = {300.0, 600.0, 1000.0, 2000.0};
     const std::vector<double> kernelRatios = {1.2, 1.3, 1.6, 2.0};
 
-    std::vector<SweepResult> cResults(speedOfSoundFactors.size());
+    std::vector<SweepResult> kResults(stiffnessScales.size());
     std::vector<SweepResult> viscResults(viscosities.size());
     std::vector<SweepResult> ratioResults(kernelRatios.size());
+    // Boundary pressure: 0 = p_ib = 0, 1 = mirrored p_ib = p_i (default).
+    std::vector<SweepResult> mirrorResults(2);
 
     std::vector<std::function<void()>> jobs;
     jobs.push_back(writeSceneMeta);
@@ -503,13 +542,21 @@ int main(int argc, char **argv)
             options.kernelSpacingRatio = kernelRatios[i];
             ratioResults[i] = runSweepPoint("hdx", kernelRatios[i], options); });
     }
-    for (std::size_t i = 0; i < speedOfSoundFactors.size(); ++i)
+    for (std::size_t i = 0; i < mirrorResults.size(); ++i)
     {
         jobs.push_back([&, i]()
                        {
             SceneOptions options;
-            options.speedOfSoundFactor = speedOfSoundFactors[i];
-            cResults[i] = runSweepPoint("c", speedOfSoundFactors[i], options); });
+            options.mirrorBoundaryPressure = (i == 1);
+            mirrorResults[i] = runSweepPoint("mirror", static_cast<double>(i), options); });
+    }
+    for (std::size_t i = 0; i < stiffnessScales.size(); ++i)
+    {
+        jobs.push_back([&, i]()
+                       {
+            SceneOptions options;
+            options.stiffnessScale = stiffnessScales[i];
+            kResults[i] = runSweepPoint("k", stiffnessScales[i], options); });
     }
     for (std::size_t i = 0; i < viscosities.size(); ++i)
     {
@@ -523,9 +570,10 @@ int main(int argc, char **argv)
     const auto start = std::chrono::steady_clock::now();
     runParallel(jobs);
 
-    writeSweep("sweep_c.csv", cResults);
+    writeSweep("sweep_k.csv", kResults);
     writeSweep("sweep_visc.csv", viscResults);
     writeSweep("sweep_hdx.csv", ratioResults);
+    writeSweep("sweep_mirror.csv", mirrorResults);
 
     const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     std::printf("All experiments finished in %.0f s\n", elapsed);

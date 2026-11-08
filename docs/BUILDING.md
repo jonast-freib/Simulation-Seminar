@@ -45,7 +45,7 @@ Each frame advances 1/60 s of simulated time. The solver splits it into substeps
 The window displays debug sliders for:
 
 - Rest density
-- Speed of sound
+- Stiffness coefficient k
 - Viscosity
 - Smoothing radius
 - Gravity

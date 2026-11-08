@@ -15,14 +15,17 @@ static void expect(bool condition, const char *message)
     }
 }
 
-// The Tait EOS with B = rho0 c^2 / 7 must give dp/drho = c^2 at rest density.
-static void testTaitSpeedOfSound()
+// The state equation p = k ((rho / rho0)^7 - 1) must give dp/drho = 7 k / rho0
+// at rest density, i.e. pressure waves travel at sqrt(7 k / rho0).
+static void testStateEquationStiffness()
 {
-    SPHSolver solver(20.0, 300.0, 1000.0, 0.0, Vector2D(0.0, 0.0));
+    const double k = 1.0e6;
     const double rho0 = 300.0;
+    SPHSolver solver(20.0, rho0, k, 0.0, Vector2D(0.0, 0.0));
     const double eps = 1e-4 * rho0;
     const double dpdrho = (solver.pressureFromDensity(rho0 + eps) - solver.pressureFromDensity(rho0)) / eps;
-    expect(std::abs(dpdrho - 1000.0 * 1000.0) < 1e-3 * 1000.0 * 1000.0, "Tait EOS slope equals c^2 at rho0");
+    expect(std::abs(dpdrho - 7.0 * k / rho0) < 1e-3 * 7.0 * k / rho0, "state equation slope equals 7 k / rho0");
+    expect(std::abs(solver.getPressureWaveSpeed() - std::sqrt(7.0 * k / rho0)) < 1e-9, "pressure-wave speed");
     expect(solver.pressureFromDensity(0.9 * rho0) == 0.0, "negative pressure is clamped");
 }
 
@@ -36,7 +39,7 @@ static void testHydrostaticColumn()
     solver.setBounds(1700.0, 900.0);
 
     const SceneParameters &params = scene.parameters;
-    const double cflLimit = 0.4 * params.smoothingRadius / params.speedOfSound;
+    const double cflLimit = 0.4 * params.smoothingRadius / solver.getPressureWaveSpeed();
     const double frameTime = 1.0 / 60.0;
     const int frames = 180; // 3 s of simulated time
 
@@ -84,7 +87,7 @@ static void testHydrostaticColumn()
 
 int main()
 {
-    testTaitSpeedOfSound();
+    testStateEquationStiffness();
     testHydrostaticColumn();
     return 0;
 }

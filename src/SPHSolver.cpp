@@ -4,10 +4,10 @@
 
 SPHSolver::SPHSolver(double smoothingRadius,
                      double restDensity,
-                     double speedOfSound,
+                     double stiffness,
                      double viscosity,
                      const Vector2D &gravity)
-    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius), restDensity(restDensity), speedOfSound(speedOfSound), viscosity(viscosity), gravity(gravity), boundaryWidth(0.0), boundaryHeight(0.0), boundaryDamping(0.5), kernelSpacingRatio(defaultKernelSpacingRatio), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
+    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius), restDensity(restDensity), stiffness(stiffness), viscosity(viscosity), gravity(gravity), boundaryWidth(0.0), boundaryHeight(0.0), boundaryDamping(0.5), kernelSpacingRatio(defaultKernelSpacingRatio), mirrorBoundaryPressure(true), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
 {
 }
 
@@ -23,9 +23,9 @@ void SPHSolver::setRestDensity(double rho0)
     particleMass = computeParticleMass();
 }
 
-void SPHSolver::setSpeedOfSound(double c)
+void SPHSolver::setStiffness(double k)
 {
-    speedOfSound = c;
+    stiffness = k;
 }
 
 void SPHSolver::setViscosity(double mu)
@@ -59,9 +59,15 @@ double SPHSolver::getSmoothingRadius() const
     return smoothingRadius;
 }
 
-double SPHSolver::getSpeedOfSound() const
+double SPHSolver::getStiffness() const
 {
-    return speedOfSound;
+    return stiffness;
+}
+
+double SPHSolver::getPressureWaveSpeed() const
+{
+    // dp/drho at rho_0 for p = k ((rho / rho_0)^7 - 1) is 7 k / rho_0.
+    return std::sqrt(7.0 * stiffness / restDensity);
 }
 
 double SPHSolver::getRestDensity() const
@@ -73,6 +79,11 @@ void SPHSolver::setKernelSpacingRatio(double ratio)
 {
     kernelSpacingRatio = ratio;
     particleMass = computeParticleMass();
+}
+
+void SPHSolver::setBoundaryPressureMirroring(bool enabled)
+{
+    mirrorBoundaryPressure = enabled;
 }
 
 double SPHSolver::getKernelSpacingRatio() const
@@ -97,15 +108,13 @@ double SPHSolver::getLastTimeStep() const
 
 double SPHSolver::pressureFromDensity(double density) const
 {
-    // Tait equation (Monaghan 1994, Becker & Teschner 2007) with gamma = 7.
-    // The stiffness B makes the speed of sound at rest density equal to c.
-    constexpr double gamma = 7.0;
-    const double B = restDensity * speedOfSound * speedOfSound / gamma;
+    // State equation of weakly compressible SPH (Monaghan 1994,
+    // Becker & Teschner 2007): p_i = k ((rho_i / rho_0)^7 - 1).
     const double ratio = density / restDensity;
     const double r2 = ratio * ratio;
     const double r7 = r2 * r2 * r2 * ratio;
-    // Negative pressures are clamped to avoid tensile clumping at the free surface.
-    return std::max(0.0, B * (r7 - 1.0));
+    // Pressure values are kept non-negative (avoids tensile clumping at the free surface).
+    return std::max(0.0, stiffness * (r7 - 1.0));
 }
 
 void SPHSolver::step(std::vector<Particle> &particles, double dt)
@@ -179,8 +188,10 @@ double SPHSolver::computeStableTimeStep(const std::vector<Particle> &particles) 
 
     const double h = smoothingRadius;
 
-    // Acoustic CFL condition: information travels at c + |v|.
-    double dt = 0.4 * h / (speedOfSound + std::sqrt(maxSpeedSquared));
+    // CFL condition, dt <= lambda h / |v^max|, with lambda = 0.4. In a weakly
+    // compressible fluid pressure waves travel at sqrt(7 k / rho_0) relative to
+    // the particles, so that speed is added to the particle speed.
+    double dt = 0.4 * h / (getPressureWaveSpeed() + std::sqrt(maxSpeedSquared));
 
     // Force condition (Monaghan 1992).
     const double maxAccel = std::sqrt(maxAccelSquared);
@@ -208,7 +219,11 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
 
         if (pi.fixed)
         {
-            // Wall pressure is extrapolated from the fluid below.
+            // Boundary samples are static fluid samples at rest density.
+            // Their pressure is mirrored from the fluid particle in the
+            // pressure acceleration (p_ib = p_i), so none is stored here.
+            pi.density = restDensity;
+            pi.pressure = 0.0;
             continue;
         }
 
@@ -229,63 +244,13 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
             const double kernelValue =
                 cubicSplineKernel(r2, smoothingRadius);
 
-            // Fixed particles contribute like fluid at rest density. Walls must
-            // be thick enough (3 layers at spacing h/2) to fill the 2h support.
+            // rho_i = sum_if m_if W_iif + sum_ib m_ib W_iib: boundary samples
+            // contribute like fluid. Walls are thick enough (ceil(2h / dx)
+            // layers) to fill the kernel support.
             densitySum += pj.mass * kernelValue;
         }
         pi.density = densitySum;
         pi.pressure = pressureFromDensity(pi.density);
-    }
-
-    computeWallPressure(particles);
-}
-
-void SPHSolver::computeWallPressure(std::vector<Particle> &particles)
-{
-    // Generalized wall boundary condition (Adami, Hu & Adams 2012):
-    // each wall particle gets the Shepard-interpolated pressure of the
-    // surrounding fluid plus the hydrostatic correction for its offset,
-    //   p_b = (sum_f p_f W_bf + g . sum_f rho_f (x_b - x_f) W_bf) / sum_f W_bf.
-    // The wall then pushes back with the same symmetric pressure term as
-    // the fluid, so the first fluid layer needs no excess pressure.
-    constexpr double gamma = 7.0;
-    const double B = restDensity * speedOfSound * speedOfSound / gamma;
-
-    for (std::size_t b = 0; b < particles.size(); ++b)
-    {
-        Particle &wall = particles[b];
-        if (!wall.fixed)
-        {
-            continue;
-        }
-
-        double weightSum = 0.0;
-        double pressureSum = 0.0;
-        double hydrostaticSum = 0.0;
-        for (std::size_t f : neighborSearch.getNeighbors(b))
-        {
-            const Particle &fluid = particles[f];
-            if (fluid.fixed)
-            {
-                continue;
-            }
-            const Vector2D rbf = wall.position - fluid.position;
-            const double w = cubicSplineKernel(rbf.x * rbf.x + rbf.y * rbf.y, smoothingRadius);
-            weightSum += w;
-            pressureSum += fluid.pressure * w;
-            hydrostaticSum += fluid.density * (gravity.x * rbf.x + gravity.y * rbf.y) * w;
-        }
-
-        if (weightSum > 0.0)
-        {
-            wall.pressure = std::max(0.0, (pressureSum + hydrostaticSum) / weightSum);
-        }
-        else
-        {
-            wall.pressure = 0.0;
-        }
-        // Wall density from the inverse equation of state.
-        wall.density = restDensity * std::pow(wall.pressure / B + 1.0, 1.0 / gamma);
     }
 }
 
@@ -399,11 +364,14 @@ void SPHSolver::computeForces(std::vector<Particle> &particles)
             }
             if (pj.fixed)
             {
-                // Fluid-Boundary interaction: same symmetric form as
-                // fluid-fluid, using the extrapolated wall pressure.
+                // Fluid-boundary interaction with mirrored pressure and
+                // density, p_ib = p_i and rho_ib = rho_i:
+                //   a_i^p = ... - sum_ib m_ib (p_i/rho_i^2 + p_i/rho_i^2) grad W_iib
+                // Without mirroring (p_ib = 0) only the first term remains.
+                const double boundaryFactor = mirrorBoundaryPressure ? 2.0 : 1.0;
                 pressureTermBoundary =
-                    (pi.pressure / (particleDensity * particleDensity) +
-                     pj.pressure / (neighborDensity * neighborDensity));
+                    boundaryFactor * pi.pressure /
+                    (particleDensity * particleDensity);
             }
 
             const Vector2D gradW =

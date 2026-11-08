@@ -3,20 +3,21 @@
 \contentsline {section}{\numberline {2}Research Questions}{2}{section.2}%
 \contentsline {section}{\numberline {3}Methodology}{2}{section.3}%
 \contentsline {subsection}{\numberline {3.1}SPH Approximation}{2}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Density and Equation of State}{2}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Momentum Equation}{3}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Boundary Conditions}{3}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.2}Density and State Equation}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Accelerations}{3}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Boundary Handling}{3}{subsection.3.4}%
 \contentsline {subsection}{\numberline {3.5}Time Integration}{4}{subsection.3.5}%
 \contentsline {subsection}{\numberline {3.6}Neighbour Search}{4}{subsection.3.6}%
 \contentsline {subsection}{\numberline {3.7}Software Structure}{4}{subsection.3.7}%
-\contentsline {subsection}{\numberline {3.8}Experimental Setup}{4}{subsection.3.8}%
-\contentsline {section}{\numberline {4}Results}{4}{section.4}%
+\contentsline {subsection}{\numberline {3.8}Experimental Setup}{5}{subsection.3.8}%
+\contentsline {section}{\numberline {4}Results}{5}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Correctness Tests}{5}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Hydrostatic Column}{5}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}Dam Break}{6}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}Speed of Sound}{6}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Viscosity}{7}{subsection.4.5}%
-\contentsline {subsection}{\numberline {4.6}Kernel Support and Pairing Instability}{7}{subsection.4.6}%
-\contentsline {subsection}{\numberline {4.7}Density Fields}{7}{subsection.4.7}%
-\contentsline {subsection}{\numberline {4.8}Discussion}{7}{subsection.4.8}%
-\contentsline {section}{\numberline {5}Conclusion}{8}{section.5}%
+\contentsline {subsection}{\numberline {4.3}Boundary Handling}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Dam Break}{7}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Stiffness Coefficient}{8}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Viscosity}{8}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}Kernel Support and Pairing Instability}{9}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}Density Fields}{9}{subsection.4.8}%
+\contentsline {subsection}{\numberline {4.9}Discussion}{9}{subsection.4.9}%
+\contentsline {section}{\numberline {5}Conclusion}{10}{section.5}%

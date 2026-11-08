@@ -11,26 +11,34 @@ public:
 	// into rows) when h / dx is too large; 1.3 gives ~20 neighbours in 2D.
 	static constexpr double defaultKernelSpacingRatio = 1.3;
 
-	// speedOfSound: numerical speed of sound c of the weakly compressible fluid.
-	// Choose c >= 10 * expected maximum flow speed to keep density errors ~1%.
+	// stiffness: stiffness coefficient k of the state equation
+	// p_i = k ((rho_i / rho_0)^7 - 1). Larger k -> less compressible fluid,
+	// smaller time step. Density errors stay ~1% when the pressure-wave speed
+	// sqrt(7 k / rho_0) is >= 10 * the maximum flow speed.
 	SPHSolver(double smoothingRadius = 30.0,
 			  double restDensity = 300.0,
-			  double speedOfSound = 500.0,
+			  double stiffness = 1.0e6,
 			  double viscosity = 200.0,
 			  const Vector2D& gravity = Vector2D(0.0, 10.0));
 
 	void setBounds(double width, double height);
 
 	void setRestDensity(double rho0);
-	void setSpeedOfSound(double c);
+	void setStiffness(double k);
 	void setViscosity(double mu);
 	void setSmoothingRadius(double h);
 	void setGravity(const Vector2D& g);
 	void setKernelSpacingRatio(double ratio);
+	// Boundary pressure in the pressure acceleration: mirrored from the fluid
+	// particle (p_ib = p_i, course notes; default) or zero (p_ib = 0).
+	void setBoundaryPressureMirroring(bool enabled);
 
 	double getParticleMass() const;
 	double getSmoothingRadius() const;
-	double getSpeedOfSound() const;
+	double getStiffness() const;
+	// Speed of pressure waves at rest density, sqrt(dp/drho) = sqrt(7 k / rho_0).
+	// Used by the CFL condition and for Mach-number diagnostics.
+	double getPressureWaveSpeed() const;
 	double getRestDensity() const;
 	double getKernelSpacingRatio() const;
 
@@ -51,13 +59,12 @@ public:
 	// Size of the most recent substep and the stability limit it was taken from.
 	double getLastTimeStep() const;
 
-	// Tait equation of state: p = B * ((rho / rho0)^7 - 1), B = rho0 * c^2 / 7.
+	// State equation (weakly compressible SPH): p = max(k ((rho / rho_0)^7 - 1), 0).
 	double pressureFromDensity(double density) const;
 
 private:
 	// Core SPH steps
 	void computeDensityPressure(std::vector<Particle>& particles);
-	void computeWallPressure(std::vector<Particle>& particles);
 	void computeForces(std::vector<Particle>& particles);
 	void integrate(std::vector<Particle>& particles, double dt);
 
@@ -73,7 +80,7 @@ private:
 	double smoothingRadius;
 	double smoothingRadiusSquared;
 	double restDensity;
-	double speedOfSound;
+	double stiffness;
 	double viscosity;
 	Vector2D gravity;
 
@@ -82,6 +89,7 @@ private:
 	double boundaryDamping;
 
 	double kernelSpacingRatio;
+	bool mirrorBoundaryPressure;
 	double particleMass;
 	double lastTimeStep;
 

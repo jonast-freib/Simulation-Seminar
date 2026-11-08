@@ -24,14 +24,16 @@
 \maketitle
 \begin{abstract}
 This paper documents the design and evaluation of a small two-dimensional
-smoothed particle hydrodynamics (SPH) solver. The fluid is modelled as weakly
-compressible with a Tait equation of state, the time step adapts to the
-acoustic, force, and viscous stability limits, and walls are represented by
-fixed particles with pressures extrapolated from the fluid. The solver is
-evaluated on a hydrostatic column and a dam break, and parameter studies
-quantify how the speed of sound, the viscosity, and the ratio of smoothing
-length to particle spacing affect compressibility, pressure noise, cost, and
-particle ordering.
+smoothed particle hydrodynamics (SPH) solver that follows the state-equation
+SPH scheme of the course notes. The fluid is modelled as weakly compressible
+with a stiff state equation, the time step adapts to the CFL, force, and viscous
+stability limits, and walls are represented by static boundary samples with
+mirrored pressure. The solver is evaluated on a hydrostatic column and a dam
+break. Parameter studies quantify how the stiffness coefficient, the viscosity,
+and the ratio of smoothing length to particle spacing affect compressibility,
+pressure noise, cost, and particle ordering, and a comparison of boundary
+pressures shows why mirroring removes a gap at the wall but feeds energy into
+the fluid.
 \end{abstract}
 
 \tableofcontents

@@ -9,10 +9,11 @@
 struct SceneParameters {
     double smoothingRadius;
     double restDensity;
-    double speedOfSound;
+    double stiffness; // stiffness coefficient k of the state equation
     double viscosity;
     double gravity;
     double kernelSpacingRatio;
+    bool mirrorBoundaryPressure;
 };
 
 // Knobs for building a scene (window units: pixels and seconds). The defaults
@@ -20,10 +21,15 @@ struct SceneParameters {
 struct SceneOptions {
     double particleSpacing = 10.0;     // initial spacing dx
     double kernelSpacingRatio = SPHSolver::defaultKernelSpacingRatio; // h / dx
-    double speedOfSoundFactor = 10.0;  // c = factor * sqrt(2 g H)
+    // Stiffness coefficient k = stiffnessScale * k_ref, where k_ref makes the
+    // pressure-wave speed ten times the free-fall speed: k_ref = rho_0 (10 sqrt(2 g H))^2 / 7.
+    double stiffnessScale = 1.0;
     double restDensity = 300.0;
-    double viscosity = 150.0;
+    // Lecture mirroring at walls (p_ib = p_i) is not energy-consistent and
+    // pumps energy into the fluid; nu >= ~600 is needed to keep it stable.
+    double viscosity = 600.0;
     double gravity = 200.0;
+    bool mirrorBoundaryPressure = true; // p_ib = p_i (course notes); false: p_ib = 0
 };
 
 // Rectangular tank: inner region [left, left + width] x [top, top + height]

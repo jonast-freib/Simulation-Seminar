@@ -1,14 +1,14 @@
 \begin{thebibliography}{10}
 
-\bibitem{adami2012}
-Stefan Adami, Xiangyu~Y. Hu, and Nikolaus~A. Adams.
-\newblock A generalized wall boundary condition for smoothed particle hydrodynamics.
-\newblock {\em Journal of Computational Physics}, 231(21):7057--7075, 2012.
+\bibitem{band2018iisph}
+Stefan Band, Christoph Gissler, Markus Ihmsen, Jens Cornelis, Andreas Peer, and Matthias Teschner.
+\newblock Pressure boundaries for implicit incompressible {SPH}.
+\newblock {\em ACM Transactions on Graphics}, 37(2), 2018.
 
-\bibitem{akinci2012}
-Nadir Akinci, Markus Ihmsen, Gizem Akinci, Barbara Solenthaler, and Matthias Teschner.
-\newblock Versatile rigid-fluid coupling for incompressible {SPH}.
-\newblock {\em ACM Transactions on Graphics}, 31(4):62:1--62:8, 2012.
+\bibitem{band2018mls}
+Stefan Band, Christoph Gissler, Andreas Peer, and Matthias Teschner.
+\newblock {MLS} pressure boundaries for divergence-free and viscous {SPH} fluids.
+\newblock {\em Computers \& Graphics}, 76:37--46, 2018.
 
 \bibitem{becker2007}
 Markus Becker and Matthias Teschner.
@@ -49,5 +49,10 @@ Joseph~P. Morris, Patrick~J. Fox, and Yi~Zhu.
 A.~Ritter.
 \newblock Die {F}ortpflanzung der {W}asserwellen.
 \newblock {\em Zeitschrift des Vereines Deutscher Ingenieure}, 36:947--954, 1892.
+
+\bibitem{teschner_notes}
+Matthias Teschner.
+\newblock Simulation in computer graphics -- particle fluids.
+\newblock Course notes, University of Freiburg, \url{https://cg.informatik.uni-freiburg.de/course_notes/sim_03_particleFluids.pdf}.
 
 \end{thebibliography}

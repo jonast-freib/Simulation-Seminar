@@ -11,12 +11,17 @@ int wallLayerCount(double h, double spacing)
     return static_cast<int>(std::ceil(2.0 * h / spacing));
 }
 
-// Weakly compressible SPH: c = 10 * v_max keeps density errors around 1%.
-// The fastest flow is roughly free fall from the top of the fluid body.
-double chooseSpeedOfSound(double factor, double g, double fluidHeight)
+// Reference stiffness coefficient k_ref for the state equation
+// p = k ((rho / rho_0)^7 - 1). Pressure waves travel at sqrt(7 k / rho_0);
+// making that ten times the maximum flow speed v_max keeps density errors
+// around 1 % (they scale with (v_max / wave speed)^2). The fastest flow is
+// roughly free fall from the top of the fluid body, v_max = sqrt(2 g H):
+//   k_ref = rho_0 (10 v_max)^2 / 7.
+double referenceStiffness(double rho0, double g, double fluidHeight)
 {
     const double maxFlowSpeed = std::sqrt(2.0 * g * fluidHeight);
-    return factor * maxFlowSpeed;
+    const double waveSpeed = 10.0 * maxFlowSpeed;
+    return rho0 * waveSpeed * waveSpeed / 7.0;
 }
 
 Tank centeredTank(double windowWidth, double windowHeight, double width, double height, bool closedTop)
@@ -104,10 +109,11 @@ Scene makeTankScene(const std::string &name, const Tank &tank,
     scene.parameters = SceneParameters{
         h,
         options.restDensity,
-        chooseSpeedOfSound(options.speedOfSoundFactor, options.gravity, fluidHeight),
+        options.stiffnessScale * referenceStiffness(options.restDensity, options.gravity, fluidHeight),
         options.viscosity,
         options.gravity,
-        options.kernelSpacingRatio};
+        options.kernelSpacingRatio,
+        options.mirrorBoundaryPressure};
 
     const double mass = options.restDensity * spacing * spacing;
     addTankWalls(scene.particles, tank, h, spacing, mass);
@@ -133,9 +139,10 @@ Scene makeHydrostaticScene(double windowWidth, double windowHeight, const SceneO
 void applySceneParameters(SPHSolver &solver, const SceneParameters &parameters)
 {
     solver.setKernelSpacingRatio(parameters.kernelSpacingRatio);
+    solver.setBoundaryPressureMirroring(parameters.mirrorBoundaryPressure);
     solver.setRestDensity(parameters.restDensity);
     solver.setSmoothingRadius(parameters.smoothingRadius);
-    solver.setSpeedOfSound(parameters.speedOfSound);
+    solver.setStiffness(parameters.stiffness);
     solver.setViscosity(parameters.viscosity);
     solver.setGravity(Vector2D(0.0, parameters.gravity));
 }

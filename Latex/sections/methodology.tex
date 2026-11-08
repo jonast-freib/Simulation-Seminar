@@ -1,135 +1,163 @@
 \section{Methodology}
 
+The solver follows the state-equation SPH (SESPH) scheme of the course notes
+\cite{teschner_notes}; the notation below is that of the notes. Where the
+implementation deviates from them, this is stated explicitly.
+
 \subsection{SPH Approximation}
 
-For a quantity $A$ evaluated at particle $i$, the SPH approximation is written
-as
+For a quantity $A$ at particle $i$, the SPH approximation is
 \begin{equation}
-    A_i \approx \sum_j m_j \frac{A_j}{\rho_j} W(\lVert \mathbf{r}_i-\mathbf{r}_j\rVert,h),
+    A_i \approx \sum_j \frac{m_j}{\rho_j} A_j W_{ij},
+    \qquad W_{ij} = W(\lVert \boldsymbol{x}_i - \boldsymbol{x}_j \rVert, h),
 \end{equation}
-where $m_j$ is the particle mass, $\rho_j$ is the density, $h$ is the smoothing
-length, and $W$ is a compact-support kernel \cite{lucy1977,monaghan1992}.
-We use the two-dimensional cubic spline with support radius $2h$,
+where $m_j$ is the particle mass, $\rho_j$ the density, $\boldsymbol{x}_j$ the
+position, $h$ the smoothing length, and $W$ a kernel with compact support
+\cite{lucy1977,monaghan1992}. We use the two-dimensional cubic spline with
+support $2h$,
 \begin{equation}
-    W(q,h) = \frac{5}{14\pi h^2}
+    W(q) = \alpha
     \begin{cases}
         (2-q)^3 - 4(1-q)^3, & 0 \le q < 1,\\
         (2-q)^3,            & 1 \le q < 2,\\
         0,                  & q \ge 2,
     \end{cases}
-    \qquad q = \frac{\lVert \mathbf{r}_i-\mathbf{r}_j\rVert}{h}.
+    \qquad q = \frac{\lVert \boldsymbol{x}_j - \boldsymbol{x}_i \rVert}{h},
+    \qquad \alpha = \frac{5}{14\pi h^2}.
 \end{equation}
 
-Particles are initialised on a square lattice with spacing $\Delta x$ and
-carry the mass $m = \rho_0 \Delta x^2$, so that a particle inside a regular
-lattice sums to the rest density $\rho_0$. The smoothing length is set to
-$h = 1.3\,\Delta x$, which gives about 20 neighbours per particle. Larger ratios
-make the cubic spline prone to the pairing instability \cite{dehnen2012}, in
-which particles clump into rows; this is examined in
-Section~\ref{sec:pairing}.
+Particles are initialised on a square lattice with spacing $\Delta x$ and carry
+the mass $m_i = \rho_0 \Delta x^2$. In the course notes the particle spacing
+equals $h$ ($m_i = \rho_0 h^d$). Here $h = 1.3\,\Delta x$ is used instead, which
+gives about 20 neighbours per particle in 2D (about 12 for $h = \Delta x$).
+Larger ratios make the cubic spline prone to the pairing instability
+\cite{dehnen2012}, which is examined in Section~\ref{sec:pairing}.
 
-\subsection{Density and Equation of State}
+\subsection{Density and State Equation}
 
-The density is obtained by direct summation over all particles within the
-kernel support, including the particle itself and the wall particles,
+The density is computed by summation over all neighbours, including the
+particle itself and the boundary samples (Section~\ref{sec:boundary}),
 \begin{equation}
-    \rho_i = m_i W(0,h) + \sum_{j \ne i} m_j W_{ij}.
+    \rho_i = \sum_{i_f} m_{i_f} W_{i i_f} + \sum_{i_b} m_{i_b} W_{i i_b},
 \end{equation}
-The fluid is treated as weakly compressible \cite{monaghan1994,becker2007}.
-Pressure follows the Tait equation
+where $i_f$ denotes the fluid and $i_b$ the boundary neighbours of $i$. The
+pressure follows the state equation of weakly compressible SPH
+\cite{teschner_notes,monaghan1994,becker2007},
 \begin{equation}
-    p_i = B\left[\left(\frac{\rho_i}{\rho_0}\right)^{\gamma} - 1\right],
-    \qquad B = \frac{\rho_0 c^2}{\gamma}, \qquad \gamma = 7,
-    \label{eq:tait}
+    p_i = \max\left(k\left(\left(\frac{\rho_i}{\rho_0}\right)^7 - 1\right), 0\right),
+    \label{eq:state}
 \end{equation}
-where $c$ is the numerical speed of sound; negative pressures are set to zero
-to avoid tensile clumping at the free surface. The density error scales with
-the squared Mach number $\mathrm{Ma}^2 = (v/c)^2$, so $c$ is chosen as ten times
-the largest expected flow speed. Estimating that speed by free fall from the top
-of the fluid body of height $H$ gives
+with the rest density $\rho_0$ and the stiffness coefficient $k$. As the course
+notes put it, $k$ does not govern the pressure but the compressibility of the
+fluid: a larger $k$ means less compression and a smaller time step. Pressure
+waves travel at $\sqrt{\mathrm{d}p/\mathrm{d}\rho} = \sqrt{7k/\rho_0}$, and the
+relative density error scales with $(v/\sqrt{7k/\rho_0})^2$ for a flow speed $v$.
+We therefore choose $k$ such that pressure waves are ten times faster than the
+fastest expected flow, estimated by free fall from the top of the fluid body of
+height $H$:
 \begin{equation}
-    c = 10\sqrt{2gH},
+    k_\mathrm{ref} = \frac{\rho_0}{7}\left(10\sqrt{2gH}\right)^2,
 \end{equation}
 which targets density errors of about one percent.
 
-\subsection{Momentum Equation}
+\subsection{Accelerations}
 
-The acceleration of a fluid particle is the sum of a pressure term, a viscous
-term and gravity,
+Following the course notes, the acceleration is split into a pressure part and
+a non-pressure part,
 \begin{align}
-    \mathbf{a}_i^{p} &= -\sum_j m_j \left(\frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}\right) \nabla_i W_{ij},\\
-    \mathbf{a}_i^{\nu} &= 2\nu \sum_j \frac{m_j}{\rho_j}
-        \frac{\mathbf{v}_{ij}\cdot\mathbf{r}_{ij}}{\lVert\mathbf{r}_{ij}\rVert^2 + 0.01h^2}\,\nabla_i W_{ij},\\
-    \mathbf{a}_i &= \mathbf{a}_i^{p} + \mathbf{a}_i^{\nu} + \mathbf{g},
+    \boldsymbol{a}_i^\mathrm{nonp} &= \nu \nabla^2 \boldsymbol{v}_i + \boldsymbol{g},
+    \qquad
+    \nabla^2 \boldsymbol{v}_i = d \sum_j \frac{m_j}{\rho_j}
+        \frac{\boldsymbol{v}_{ij}\cdot\boldsymbol{x}_{ij}}{\boldsymbol{x}_{ij}\cdot\boldsymbol{x}_{ij} + 0.01h^2}\,\nabla W_{ij},\\
+    \boldsymbol{a}_i^\mathrm{p} &= -\frac{1}{\rho_i}\nabla p_i
+        = -\sum_{i_f} m_{i_f}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_f}}{\rho_{i_f}^2}\right)\nabla W_{i i_f}
+          -\sum_{i_b} m_{i_b}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_b}}{\rho_{i_b}^2}\right)\nabla W_{i i_b},\\
+    \boldsymbol{a}_i &= \boldsymbol{a}_i^\mathrm{nonp} + \boldsymbol{a}_i^\mathrm{p},
 \end{align}
-with $\mathbf{r}_{ij} = \mathbf{r}_i - \mathbf{r}_j$ and
-$\mathbf{v}_{ij} = \mathbf{v}_i - \mathbf{v}_j$. The symmetric pressure term
-conserves linear momentum; the viscous term follows
-\cite{monaghan1992,morris1997} and also damps the acoustic oscillations that a
-weakly compressible fluid carries.
+with $\boldsymbol{x}_{ij} = \boldsymbol{x}_i - \boldsymbol{x}_j$,
+$\boldsymbol{v}_{ij} = \boldsymbol{v}_i - \boldsymbol{v}_j$, the dimensionality
+$d = 2$, and the kinematic viscosity $\nu$ \cite{morris1997}. The Laplacian is
+approximated with the first kernel derivative because the second derivative is
+sensitive to particle disorder. Besides modelling friction, the viscosity damps
+the acoustic oscillations that a weakly compressible fluid carries.
 
-\subsection{Boundary Conditions}
+\subsection{Boundary Handling}
+\label{sec:boundary}
 
-Walls are built from fixed particles placed on the same lattice as the fluid.
-Enough layers are used to fill the full kernel support of a fluid particle
-touching the wall ($\lceil 2h/\Delta x \rceil = 3$ layers for $h = 1.3\Delta x$),
-so that wall particles enter the density sum like fluid at rest density.
+Walls are represented by static boundary samples placed on the same lattice as
+the fluid and with the same mass. Several layers are used, so that a fluid
+particle at the wall has a completely filled kernel support
+($\lceil 2h/\Delta x \rceil = 3$ layers for $h = 1.3\Delta x$); the boundary
+samples then enter the density sum like fluid at rest density.
 
-Wall particles carry no state of their own, so a pressure has to be assigned to
-them. If the wall term used only $p_i/\rho_i^2$ \cite{akinci2012}, the wall
-would provide half the support that a fluid neighbour provides; the first fluid
-layer then has to compress until its pressure is roughly doubled, which pushes
-the second layer away and leaves a visible gap above the floor. Instead the wall
-pressure is extrapolated from the surrounding fluid following
-Adami et al.~\cite{adami2012},
+The pressure acceleration requires a pressure at the boundary samples. Following
+the course notes, pressure and density are mirrored from the fluid particle,
+$p_{i_b} = p_i$ and $\rho_{i_b} = \rho_i$, so that the boundary term becomes
 \begin{equation}
-    p_b = \frac{\sum_f p_f W_{bf} + \mathbf{g}\cdot\sum_f \rho_f\,(\mathbf{r}_b - \mathbf{r}_f)\,W_{bf}}{\sum_f W_{bf}},
+    \boldsymbol{a}_i^\mathrm{p} = -\sum_{i_f} m_{i_f}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_f}}{\rho_{i_f}^2}\right)\nabla W_{i i_f}
+    - \sum_{i_b} m_{i_b}\,\frac{2p_i}{\rho_i^2}\,\nabla W_{i i_b}.
+    \label{eq:mirroring}
 \end{equation}
-where the sums run over the fluid neighbours $f$ of the wall particle $b$ and the
-second term adds the hydrostatic pressure difference across the wall. The wall
-density $\rho_b$ follows from inverting Eq.~\eqref{eq:tait}, and the fluid--wall
-pressure force uses the same symmetric form as the fluid--fluid force.
+Mirroring gives a fluid particle at the wall the full pressure support, so the
+first fluid layer carries the hydrostatic load without excess compression. It
+is, however, not energy-consistent: the boundary samples enter $\rho_i$ once but
+the pressure acceleration twice. In our stiff setting this feeds energy into the
+fluid near walls; with $\nu = 150$ a resting column did not come to rest but
+reached particle speeds of up to about $1500\,\mathrm{px/s}$, independently of
+the time step. A viscosity of $\nu = 600$ removes this energy faster than it is fed in
+and is therefore used as the default (Section~\ref{sec:viscosity}). A residual
+motion along the walls remains, which is a known artefact of mirrored boundary
+pressures \cite{band2018mls,band2018iisph}.
 
 As a safety net against penetration during violent impacts, a fluid particle
-that comes closer than $\Delta x/2$ to a wall particle is projected back to that
-distance and its normal velocity is reflected with a restitution of $0.5$.
-Fluid at rest sits a full spacing away from the wall, so the projection does not
-act in quiescent regions.
+that comes closer than $\Delta x/2$ to a boundary sample is projected back to
+that distance and its normal velocity is reflected with a restitution of $0.5$.
+This projection is not part of the course notes; fluid at rest sits a full
+spacing away from the wall, so it does not act in quiescent regions.
 
 \subsection{Time Integration}
 
-Positions and velocities are advanced with the semi-implicit (symplectic) Euler
-scheme,
-$\mathbf{v}^{n+1} = \mathbf{v}^{n} + \Delta t\,\mathbf{a}^{n}$,
-$\mathbf{r}^{n+1} = \mathbf{r}^{n} + \Delta t\,\mathbf{v}^{n+1}$.
-The time step is chosen adaptively in every substep as the most restrictive of
-the acoustic CFL, force, and viscous conditions \cite{monaghan1992},
+Velocities and positions are updated with the semi-implicit (symplectic) Euler
+scheme of the course notes,
+\begin{equation}
+    \boldsymbol{v}_i(t+\Delta t) = \boldsymbol{v}_i(t) + \Delta t\,\boldsymbol{a}_i(t),
+    \qquad
+    \boldsymbol{x}_i(t+\Delta t) = \boldsymbol{x}_i(t) + \Delta t\,\boldsymbol{v}_i(t+\Delta t).
+\end{equation}
+The course notes bound the time step by the CFL condition
+$\Delta t \le \lambda\, h / \lVert \boldsymbol{v}^\mathrm{max} \rVert$. In a weakly
+compressible fluid, information also travels with the pressure waves, so their
+speed is added to the particle speed. Together with a force and a viscous
+condition \cite{monaghan1992}, the time step is chosen adaptively in every
+substep as
 \begin{equation}
     \Delta t = \min\left(
-        0.4\,\frac{h}{c + \max_i \lVert\mathbf{v}_i\rVert},\;
-        0.25\sqrt{\frac{h}{\max_i \lVert\mathbf{a}_i\rVert}},\;
+        \lambda\,\frac{h}{\sqrt{7k/\rho_0} + \lVert \boldsymbol{v}^\mathrm{max}\rVert},\;
+        0.25\sqrt{\frac{h}{\lVert \boldsymbol{a}^\mathrm{max}\rVert}},\;
         0.125\,\frac{h^2}{\nu}
-    \right).
+    \right),
+    \qquad \lambda = 0.4.
 \end{equation}
 Each rendered frame advances the simulation by $1/60\,\mathrm{s}$, split into as
-many substeps as these limits require. For the stiff fluids used here the
-acoustic condition dominates.
+many substeps as these limits require. For the stiffness used here the first
+condition dominates.
 
 \subsection{Neighbour Search}
 
 Neighbour lists are rebuilt once per substep by testing all particle pairs
-against the kernel support radius $2h$. The cost of this search is
-$\mathcal{O}(N^2)$; it is adequate for the scene sizes used in this work
-(about $1.6\times10^3$ particles) but is the main limitation for larger scenes.
+against the kernel support $2h$. In contrast to the uniform grid or compact
+hashing of the course notes, this costs $\mathcal{O}(N^2)$; it is adequate for
+the scene sizes used here (about $1.6\times10^3$ particles) but is the main
+limitation for larger scenes.
 
 \subsection{Software Structure}
 
 The solver is separated into the following components:
 \begin{itemize}
     \item \texttt{Particle} stores particle state and physical properties.
-    \item \texttt{NeighborSearch} constructs local particle neighborhoods.
-    \item \texttt{SPHSolver} performs the density, wall-pressure, force, and
-          integration steps and chooses the adaptive time step.
+    \item \texttt{NeighborSearch} constructs local particle neighbourhoods.
+    \item \texttt{SPHSolver} computes density, pressure and accelerations,
+          integrates the particles, and chooses the adaptive time step.
     \item \texttt{Scenes} builds the test scenes (tank walls, fluid body, and
           matching solver parameters).
     \item \texttt{Renderer} displays the scene and exposes runtime controls.
@@ -169,10 +197,12 @@ choice of units does not affect them. Two scenes are used
         Smoothing length & $h$ & $13\,\mathrm{px}$ ($1.3\,\Delta x$) \\
         Rest density & $\rho_0$ & $300$ \\
         Gravity & $g$ & $200\,\mathrm{px/s^2}$ \\
-        Speed of sound & $c$ & $10\sqrt{2gH} = 4000\,\mathrm{px/s}$ \\
-        Viscosity & $\nu$ & $150\,\mathrm{px^2/s}$ \\
-        Fluid / wall particles (column) & & $1200$ / $420$ \\
-        Fluid / wall particles (dam break) & & $800$ / $828$ \\
+        Stiffness coefficient & $k$ & $k_\mathrm{ref} = 6.86\times10^{8}$ \\
+        Pressure-wave speed & $\sqrt{7k/\rho_0}$ & $4000\,\mathrm{px/s}$ \\
+        Kinematic viscosity & $\nu$ & $600\,\mathrm{px^2/s}$ \\
+        CFL factor & $\lambda$ & $0.4$ \\
+        Fluid / boundary particles (column) & & $1200$ / $420$ \\
+        Fluid / boundary particles (dam break) & & $800$ / $828$ \\
         Frame time & & $1/60\,\mathrm{s}$ \\
         \bottomrule
     \end{tabular}

@@ -27,7 +27,7 @@ int main()
     enum SliderIndex
     {
         RestDensitySlider,
-        SpeedOfSoundSlider,
+        StiffnessSlider,
         ViscositySlider,
         SmoothingRadiusSlider,
         GravitySlider
@@ -37,9 +37,9 @@ int main()
     const float sliderGap = 40.f;
     renderer.addSlider("restDensity", 100.f, 800.f, 300.f, sliderX, sliderY);
     sliderY += sliderGap;
-    renderer.addSlider("speedOfSound", 500.f, 10000.f, 4000.f, sliderX, sliderY);
+    renderer.addSlider("stiffness k", 1.0e7f, 3.0e9f, 6.86e8f, sliderX, sliderY);
     sliderY += sliderGap;
-    renderer.addSlider("viscosity", 0.f, 1000.f, 150.f, sliderX, sliderY);
+    renderer.addSlider("viscosity", 0.f, 2000.f, 600.f, sliderX, sliderY);
     sliderY += sliderGap;
     renderer.addSlider("smoothingRadius", 5.f, 40.f, 13.f, sliderX, sliderY);
     sliderY += sliderGap;
@@ -75,7 +75,7 @@ int main()
 
         applySceneParameters(sphSolver, scene.parameters);
         renderer.setSliderValue(RestDensitySlider, static_cast<float>(scene.parameters.restDensity));
-        renderer.setSliderValue(SpeedOfSoundSlider, static_cast<float>(scene.parameters.speedOfSound));
+        renderer.setSliderValue(StiffnessSlider, static_cast<float>(scene.parameters.stiffness));
         renderer.setSliderValue(ViscositySlider, static_cast<float>(scene.parameters.viscosity));
         renderer.setSliderValue(SmoothingRadiusSlider, static_cast<float>(scene.parameters.smoothingRadius));
         renderer.setSliderValue(GravitySlider, static_cast<float>(scene.parameters.gravity));
@@ -87,8 +87,8 @@ int main()
         particles = std::move(scene.particles);
         activeScene = kind;
         simulationTime = 0.0;
-        std::printf("Loaded scene '%s': %zu particles, c = %.0f\n",
-                    scene.name.c_str(), particles.size(), scene.parameters.speedOfSound);
+        std::printf("Loaded scene '%s': %zu particles, stiffness k = %.3g\n",
+                    scene.name.c_str(), particles.size(), scene.parameters.stiffness);
     };
 
     loadScene(SceneKind::DamBreak);
@@ -122,7 +122,7 @@ int main()
         {
             // Read slider values and apply to solver at a reduced cadence.
             sphSolver.setRestDensity(renderer.getSliderValue(RestDensitySlider));
-            sphSolver.setSpeedOfSound(renderer.getSliderValue(SpeedOfSoundSlider));
+            sphSolver.setStiffness(renderer.getSliderValue(StiffnessSlider));
             sphSolver.setViscosity(renderer.getSliderValue(ViscositySlider));
             sphSolver.setSmoothingRadius(renderer.getSliderValue(SmoothingRadiusSlider));
             sphSolver.setGravity(Vector2D(0.0, renderer.getSliderValue(GravitySlider)));
@@ -151,7 +151,7 @@ int main()
                         sphSolver.getLastTimeStep(),
                         100.0 * maxDensityError,
                         maxSpeed,
-                        maxSpeed / sphSolver.getSpeedOfSound());
+                        maxSpeed / sphSolver.getPressureWaveSpeed());
 
             frameCounter = 0;
             substepsSinceReport = 0;

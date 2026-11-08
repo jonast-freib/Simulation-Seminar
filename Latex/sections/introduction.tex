@@ -6,11 +6,12 @@ set of moving particles and approximates field quantities using a smoothing
 kernel \cite{lucy1977,monaghan1992}.
 
 The goal of this project is to implement and inspect a compact two-dimensional
-SPH solver in C++17. The solver treats the fluid as weakly compressible
-\cite{monaghan1994,becker2007}: pressure follows a stiff equation of state, the
-time step adapts to the acoustic stability limit, and solid walls are made of
-fixed particles whose pressure is extrapolated from the fluid
-\cite{adami2012}. An interactive SFML renderer displays the simulation, and a
+SPH solver in C++17 following the state-equation SPH (SESPH) scheme of the
+course notes \cite{teschner_notes}. The fluid is treated as weakly compressible
+\cite{monaghan1994,becker2007}: pressure follows a stiff state equation with
+stiffness coefficient $k$, the time step adapts to the CFL condition, and solid
+walls are made of static boundary samples whose pressure is mirrored from the
+fluid. An interactive SFML renderer displays the simulation, and a
 headless experiment runner produces the data for this paper. This paper
 describes the numerical model and the software structure, and evaluates the
 solver on a hydrostatic column and a dam break.
@@ -22,8 +23,8 @@ The evaluation focuses on three questions:
     \item How accurately does the solver reproduce a known solution
     (hydrostatic pressure) and a classical experiment (dam break,
     \cite{martin1952}), and how large is the density error?
-    \item How do the numerical parameters (speed of sound, viscosity, and the
-    ratio of smoothing length to particle spacing) affect compressibility,
+    \item How do the numerical parameters (stiffness coefficient, viscosity,
+    and the ratio of smoothing length to particle spacing) affect compressibility,
     pressure noise, cost, and the flow itself?
     \item Which artefacts limit the method, and where do they come from?
 \end{enumerate}

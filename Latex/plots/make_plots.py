@@ -213,9 +213,16 @@ def fig_dam_snapshots(meta):
     save(fig, "dam_snapshots.pdf")
 
 
-def fig_sweep_speed_of_sound():
-    sw = read_csv("sweep_c.csv")
-    f = sw["value"]
+STIFFNESS_LABELS = {0.0625: "1/16", 0.25: "1/4", 1.0: "1", 4.0: "4"}
+
+
+def stiffness_label(value):
+    return STIFFNESS_LABELS.get(float(value), value_label(value))
+
+
+def fig_sweep_stiffness():
+    sw = read_csv("sweep_k.csv")
+    f = sw["value"]  # k / k_ref
     fig, axes = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 2.3))
 
     ax = axes[0]
@@ -223,11 +230,11 @@ def fig_sweep_speed_of_sound():
               label="column, max")
     ax.loglog(f, 100 * sw["dam_mean_max_density_error"], color=ORANGE, marker="s", markersize=4,
               linestyle="--", label="dam break, mean of max")
-    ff = np.linspace(f.min(), f.max(), 50)
-    # Hydrostatic compression: rho/rho0 - 1 ~ g H / c^2 with c = f sqrt(2 g H).
-    ax.loglog(ff, 100 / (2 * ff ** 2), color=AQUA, linestyle=":", linewidth=1.8,
-              label=r"$gH/c^2$")
-    ax.set_xlabel(r"$c \,/\, \sqrt{2gH}$")
+    ff = np.geomspace(f.min(), f.max(), 50)
+    # Hydrostatic compression: rho/rho0 - 1 ~ rho0 g H / (7 k), which is 0.5 % at k_ref.
+    ax.loglog(ff, 0.5 / ff, color=AQUA, linestyle=":", linewidth=1.8,
+              label=r"$\rho_0 gH/(7k)$")
+    ax.set_xlabel(r"$k \,/\, k_\mathrm{ref}$")
     ax.set_ylabel(r"density error [%]")
     ax.set_title("(a) compressibility", loc="left")
     handles, labels = ax.get_legend_handles_labels()
@@ -235,25 +242,25 @@ def fig_sweep_speed_of_sound():
     ax = axes[1]
     ax.plot(f, sw["dam_substeps_per_frame"], color=BLUE, marker="o", markersize=4)
     ax.set_xscale("log")
-    ax.set_xlabel(r"$c \,/\, \sqrt{2gH}$")
+    ax.set_xlabel(r"$k \,/\, k_\mathrm{ref}$")
     ax.set_ylabel("substeps per frame")
     ax.set_title("(b) cost", loc="left")
 
     ax = axes[2]
     ax.loglog(f, 100 * sw["hydro_frame_to_frame_change"], color=BLUE, marker="o", markersize=4)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%g"))
-    ax.yaxis.set_minor_formatter(matplotlib.ticker.FormatStrFormatter("%g"))
-    ax.set_xlabel(r"$c \,/\, \sqrt{2gH}$")
+    ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.set_xlabel(r"$k \,/\, k_\mathrm{ref}$")
     ax.set_ylabel(r"$\langle|\Delta p|\rangle$ per frame [%]")
     ax.set_title("(c) pressure noise", loc="left")
 
     for ax in axes:
         ax.set_xticks(f)
-        ax.set_xticklabels([value_label(v) for v in f])
+        ax.set_xticklabels([stiffness_label(v) for v in f])
         ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
     fig.tight_layout(w_pad=1.2)
     fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=3)
-    save(fig, "sweep_speed_of_sound.pdf")
+    save(fig, "sweep_stiffness.pdf")
 
 
 def fig_sweep_viscosity():
@@ -262,17 +269,16 @@ def fig_sweep_viscosity():
     fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 2.4))
 
     ax = axes[0]
-    ax.semilogx(nu, 100 * sw["hydro_pressure_deviation"], color=BLUE, marker="o", markersize=4,
-                label="instantaneous")
-    ax.semilogx(nu, 100 * sw["hydro_averaged_pressure_deviation"], color=ORANGE, marker="s",
-                markersize=4, linestyle="--", label="1 s time average")
-    ax.set_xlabel(r"viscosity $\nu$ [px$^2$/s]")
-    ax.set_ylabel(r"$\langle|p - \rho_0 g d|\rangle$ [% of $\rho_0 gH$]")
-    ax.set_xticks(nu)
-    ax.set_xticklabels([value_label(v) for v in nu])
-    ax.minorticks_off()
-    ax.set_title("(a) hydrostatic pressure error", loc="left")
-    ax.legend(loc="upper right")
+    for colour, value in zip(ORDINAL, nu):
+        series = read_csv(f"sweep_hydro_visc_{value_label(value)}.csv")
+        ax.semilogy(series["t"], series["mean_kinetic_energy"], color=colour,
+                    label=rf"$\nu = {value_label(value)}$")
+    ax.set_xlabel("time $t$ [s]")
+    ax.set_ylabel(r"mean $\frac{1}{2}|\boldsymbol{v}|^2$ [px$^2$/s$^2$]")
+    ax.set_xlim(0, series["t"].max())
+    ax.set_title("(a) hydrostatic column", loc="left")
+    ax.legend(loc="upper left", ncol=2)
+    ax.set_ylim(None, ax.get_ylim()[1] * 8)
 
     ax = axes[1]
     for colour, value in zip(ORDINAL, nu):
@@ -287,49 +293,88 @@ def fig_sweep_viscosity():
     save(fig, "sweep_viscosity.pdf")
 
 
-def fig_pairing():
-    ratios = [1.2, 1.3, 1.6, 2.0]
-    fig = plt.figure(figsize=(TEXT_WIDTH, 4.0))
-    grid = fig.add_gridspec(len(ratios), 2, width_ratios=[1.0, 1.15], wspace=0.15, hspace=0.55)
+def fig_boundary():
+    """Mirrored vs. zero boundary pressure, and residual wall motion with mirroring."""
+    fig = plt.figure(figsize=(TEXT_WIDTH, 3.6))
+    grid = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], wspace=0.3, hspace=0.6)
 
-    for row, (colour, ratio) in enumerate(zip(ORDINAL, ratios)):
+    variants = [(0, r"$p_{i_b} = 0$", ORANGE), (1, r"mirrored, $p_{i_b} = p_i$", BLUE)]
+    for row, (flag, label, colour) in enumerate(variants):
         ax = fig.add_subplot(grid[row, 0])
-        layers = read_csv(f"layers_hdx_{value_label(ratio)}.csv")
+        layers = read_csv(f"layers_mirror_{flag}.csv")
         ax.bar(layers["height"], 100 * layers["count_fraction"], width=0.9, color=colour)
-        ax.set_xlim(0, 80)
-        ax.set_ylim(0, None)
-        ax.set_title(rf"$h/\Delta x = {value_label(ratio)}$", loc="left", fontsize=8, pad=2)
+        ax.set_xlim(0, 60)
+        ax.set_title(label, loc="left", fontsize=8, pad=2)
         ax.grid(axis="x", visible=False)
-        if row < len(ratios) - 1:
+        if row == 0:
             ax.set_xticklabels([])
         else:
             ax.set_xlabel(r"height above floor [px] ($\Delta x = 10$ px)")
-        if row == 1:
-            ax.set_ylabel("share of particles [%]")
-            ax.yaxis.set_label_coords(-0.12, 0.0)
+        ax.set_ylabel("share [%]")
+    fig.text(0.02, 0.98, "(a) particle heights in the settled column", fontsize=9, va="top")
 
-    norm = TwoSlopeNorm(vcenter=0.0, vmin=-0.01, vmax=0.01)
+    ax = fig.add_subplot(grid[:, 1])
+    snap = read_csv("hydro_snapshot.csv")
+    drift = read_csv("hydro_drift.csv")
+    wall = snap["fixed"] > 0.5
+    ax.scatter(snap["x"][wall], snap["y"][wall], s=1.0, c=WALL, linewidths=0, rasterized=True)
+    drift_speed = np.hypot(drift["drift_vx"], drift["drift_vy"])
+    sc = ax.scatter(drift["x"], drift["y"], s=1.6, c=drift_speed, cmap=SEQUENTIAL,
+                    norm=plt.Normalize(0, 12), linewidths=0, rasterized=True)
+    # Bin-averaged drift as arrows (30 px cells).
+    cell = 30.0
+    ix = np.floor(drift["x"] / cell).astype(int)
+    iy = np.floor(drift["y"] / cell).astype(int)
+    xs, ys, us, vs = [], [], [], []
+    for cx in np.unique(ix):
+        for cy in np.unique(iy):
+            sel = (ix == cx) & (iy == cy)
+            if sel.sum() < 4:
+                continue
+            xs.append(drift["x"][sel].mean())
+            ys.append(drift["y"][sel].mean())
+            us.append(drift["drift_vx"][sel].mean())
+            vs.append(drift["drift_vy"][sel].mean())
+    ax.quiver(xs, ys, us, vs, color=INK, angles="xy", scale_units="xy", scale=0.25,
+              width=0.006, headwidth=3.5)
+    ax.set_aspect("equal")
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title("(b) residual drift with mirroring", loc="left")
+    cbar = fig.colorbar(sc, ax=ax, shrink=0.7, pad=0.02, extend="max")
+    cbar.set_label("mean drift speed [px/s]")
+    cbar.outline.set_visible(False)
+    save(fig, "boundary.pdf")
+
+
+def fig_pairing():
+    ratios = [1.2, 1.3, 1.6, 2.0]
+    sweep = read_csv("sweep_hdx.csv")
+    neighbours = dict(zip(sweep["value"], sweep["hydro_mean_neighbors"]))
+    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.9))
+    norm = TwoSlopeNorm(vcenter=0.0, vmin=-0.02, vmax=0.02)
     sc = None
-    for col, ratio in enumerate([1.3, 2.0]):
-        sub = grid[:, 1].subgridspec(1, 2, wspace=0.05)
-        ax = fig.add_subplot(sub[0, col])
+    for ax, ratio in zip(axes, ratios):
         snap = read_csv(f"density_hydro_hdx_{value_label(ratio)}.csv")
         window = (snap["x"] > 60) & (snap["x"] < 240) & (snap["y"] < 150)
         snap = {k: v[window] for k, v in snap.items()}
-        sc = draw_particles(ax, snap, snap["density_error"], DIVERGING, norm, size=9)
-        ax.set_title(rf"$h/\Delta x = {value_label(ratio)}$")
-    cbar = fig.colorbar(sc, ax=fig.axes[-2:], orientation="horizontal", shrink=0.8, pad=0.04,
-                        extend="both")
-    cbar.set_label(r"density error $\rho/\rho_0 - 1$")
-    cbar.ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(xmax=1, decimals=1))
+        sc = draw_particles(ax, snap, snap["density_error"], DIVERGING, norm, size=5)
+        n = neighbours.get(ratio, float("nan"))
+        ax.set_title(rf"$h/\Delta x = {value_label(ratio)}$" + f"\n({n:.0f} neighbours)", fontsize=8)
+    cbar = fig.colorbar(sc, ax=list(axes), shrink=0.8, pad=0.02, extend="both")
+    cbar.set_label(r"$\rho/\rho_0 - 1$")
+    cbar.ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(xmax=1, decimals=0))
     cbar.outline.set_visible(False)
     save(fig, "pairing.pdf")
 
 
 def fig_density_grid():
     studies = [
-        ("c", [2.5, 5, 10, 20], lambda v: rf"$c = {value_label(v)}\sqrt{{2gH}}$"),
-        ("visc", [50, 150, 400, 1000], lambda v: rf"$\nu = {value_label(v)}$"),
+        ("k", [0.0625, 0.25, 1, 4], lambda v: rf"$k = {stiffness_label(v)}\,k_\mathrm{{ref}}$"),
+        ("visc", [300, 600, 1000, 2000], lambda v: rf"$\nu = {value_label(v)}$"),
         ("hdx", [1.2, 1.3, 1.6, 2.0], lambda v: rf"$h/\Delta x = {value_label(v)}$"),
     ]
     fig, axes = plt.subplots(3, 4, figsize=(TEXT_WIDTH, 2.9))
@@ -356,9 +401,10 @@ def main():
     fig_hydro_settling()
     fig_dam_front(meta)
     fig_dam_snapshots(meta)
-    fig_sweep_speed_of_sound()
+    fig_sweep_stiffness()
     fig_sweep_viscosity()
     fig_pairing()
+    fig_boundary()
     fig_density_grid()
 
 

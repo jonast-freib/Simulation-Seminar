@@ -1,21 +1,26 @@
 \section{Conclusion}
 
-This project provides a small and inspectable two-dimensional SPH solver with a
-weakly compressible equation of state, adaptive time stepping, extrapolated
-wall pressures, an interactive visualisation, and a reproducible experiment
-pipeline.
+This project provides a small and inspectable two-dimensional SPH solver that
+follows the state-equation scheme of the course notes, with a stiff state
+equation, mirrored boundary pressures, adaptive time stepping, an interactive
+visualisation, and a reproducible experiment pipeline.
 
-With the speed of sound set to ten times the free-fall velocity, the settled
-hydrostatic column keeps its density within about $0.6\,\%$ of the rest density
-and reproduces the hydrostatic pressure to within a few percent when averaged
-over time. The dam break stays below $1.5\,\%$ density error until the water
-hits the opposite wall. The parameter studies show that the speed of sound
-trades compressibility against cost and pressure noise, that viscosity is needed
-to damp acoustic oscillations but slows the flow, and that the smoothing length
-must stay close to $1.3$ particle spacings: larger values trigger the pairing
-instability, smaller ones freeze the particles on their initial lattice.
+With the stiffness coefficient chosen so that pressure waves are ten times
+faster than the free-fall velocity, the settled hydrostatic column keeps its
+density within about $0.7\,\%$ of the rest density and reproduces the
+hydrostatic pressure to within a few percent when averaged over time. The dam
+break stays below $3\,\%$ density error until the water hits the opposite wall.
 
-Future work could replace the all-pairs neighbour search by a uniform grid to
-reach higher resolutions, reduce the pressure noise with density diffusion
-($\delta$-SPH) or an implicit pressure solver (IISPH, DFSPH), and compare the
-dam-break front quantitatively with the measurements of Martin and Moyce.
+The parameter studies show that the stiffness coefficient trades
+compressibility against cost and pressure noise, and that the smoothing length
+should stay close to $1.3$ particle spacings, because larger values trigger the
+pairing instability. Mirroring the pressure to the boundary samples removes the
+gap between the wall and the first fluid layers, but it feeds energy into the
+fluid: a viscosity of at least $\nu = 600$ is needed to keep the fluid stable,
+which slows the flow, and slow eddies remain along the walls.
+
+Future work could extrapolate the boundary pressure instead of mirroring it,
+replace the all-pairs neighbour search by a uniform grid to reach higher
+resolutions, reduce the pressure noise with an iterative or implicit pressure
+solver (PCISPH, IISPH, DFSPH), and compare the dam-break front quantitatively
+with the measurements of Martin and Moyce.
