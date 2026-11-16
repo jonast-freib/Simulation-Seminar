@@ -7,14 +7,8 @@ SPHSolver::SPHSolver(double smoothingRadius,
                      double stiffness,
                      double viscosity,
                      const Vector2D &gravity)
-    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius), restDensity(restDensity), stiffness(stiffness), viscosity(viscosity), gravity(gravity), boundaryWidth(0.0), boundaryHeight(0.0), boundaryDamping(0.5), kernelSpacingRatio(defaultKernelSpacingRatio), mirrorBoundaryPressure(true), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
+    : smoothingRadius(smoothingRadius), restDensity(restDensity), stiffness(stiffness), viscosity(viscosity), gravity(gravity), boundaryDamping(0.5), kernelSpacingRatio(defaultKernelSpacingRatio), mirrorBoundaryPressure(true), particleMass(computeParticleMass()), lastTimeStep(0.0), neighborSearch(2.0 * smoothingRadius)
 {
-}
-
-void SPHSolver::setBounds(double width, double height)
-{
-    boundaryWidth = width;
-    boundaryHeight = height;
 }
 
 void SPHSolver::setRestDensity(double rho0)
@@ -36,7 +30,6 @@ void SPHSolver::setViscosity(double mu)
 void SPHSolver::setSmoothingRadius(double h)
 {
     smoothingRadius = h;
-    smoothingRadiusSquared = h * h;
 
     // Density kernel has support 2h.
     neighborSearch.setRadius(2.0 * h);
@@ -54,19 +47,8 @@ double SPHSolver::getParticleMass() const
     return particleMass;
 }
 
-double SPHSolver::getSmoothingRadius() const
-{
-    return smoothingRadius;
-}
-
-double SPHSolver::getStiffness() const
-{
-    return stiffness;
-}
-
 double SPHSolver::getPressureWaveSpeed() const
 {
-    // dp/drho at rho_0 for p = k ((rho / rho_0)^7 - 1) is 7 k / rho_0.
     return std::sqrt(7.0 * stiffness / restDensity);
 }
 
@@ -86,11 +68,6 @@ void SPHSolver::setBoundaryPressureMirroring(bool enabled)
     mirrorBoundaryPressure = enabled;
 }
 
-double SPHSolver::getKernelSpacingRatio() const
-{
-    return kernelSpacingRatio;
-}
-
 double SPHSolver::getParticleSpacing() const
 {
     return smoothingRadius / kernelSpacingRatio;
@@ -108,36 +85,26 @@ double SPHSolver::getLastTimeStep() const
 
 double SPHSolver::pressureFromDensity(double density) const
 {
-    // State equation of weakly compressible SPH (Monaghan 1994,
-    // Becker & Teschner 2007): p_i = k ((rho_i / rho_0)^7 - 1).
     const double ratio = density / restDensity;
     const double r2 = ratio * ratio;
     const double r7 = r2 * r2 * r2 * ratio;
-    // Pressure values are kept non-negative (avoids tensile clumping at the free surface).
     return std::max(0.0, stiffness * (r7 - 1.0));
 }
 
 void SPHSolver::step(std::vector<Particle> &particles, double dt)
 {
-    // Build the neighbor list once per step.
-    // The cubic spline density kernel has support 2h.
-    neighborSearch.setRadius(2.0 * smoothingRadius);
     neighborSearch.build(particles);
 
-    // Compute density and pressure for every particle.
     computeDensityPressure(particles);
 
-    // Compute pressure, viscosity and gravity accelerations.
     computeForces(particles);
 
-    // Integrate motion and handle boundaries.
     lastTimeStep = dt;
     integrate(particles, dt);
 }
 
 int SPHSolver::advance(std::vector<Particle> &particles, double duration)
 {
-    // Guard against a stall if the state has blown up (dt -> 0).
     constexpr int maxSubsteps = 2000;
     const double minTimeStep = duration / maxSubsteps;
 
@@ -145,7 +112,6 @@ int SPHSolver::advance(std::vector<Particle> &particles, double duration)
     int substeps = 0;
     while (elapsed < duration && substeps < maxSubsteps)
     {
-        neighborSearch.setRadius(2.0 * smoothingRadius);
         neighborSearch.build(particles);
         computeDensityPressure(particles);
         computeForces(particles);
@@ -158,7 +124,6 @@ int SPHSolver::advance(std::vector<Particle> &particles, double duration)
         }
         else if (dt > 0.5 * remaining)
         {
-            // Split the rest evenly instead of leaving a tiny final step.
             dt = 0.5 * remaining;
         }
 
@@ -188,19 +153,14 @@ double SPHSolver::computeStableTimeStep(const std::vector<Particle> &particles) 
 
     const double h = smoothingRadius;
 
-    // CFL condition, dt <= lambda h / |v^max|, with lambda = 0.4. In a weakly
-    // compressible fluid pressure waves travel at sqrt(7 k / rho_0) relative to
-    // the particles, so that speed is added to the particle speed.
     double dt = 0.4 * h / (getPressureWaveSpeed() + std::sqrt(maxSpeedSquared));
 
-    // Force condition (Monaghan 1992).
     const double maxAccel = std::sqrt(maxAccelSquared);
     if (maxAccel > 0.0)
     {
         dt = std::min(dt, 0.25 * std::sqrt(h / maxAccel));
     }
 
-    // Viscous diffusion condition.
     if (viscosity > 0.0)
     {
         dt = std::min(dt, 0.125 * h * h / viscosity);
@@ -219,16 +179,11 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
 
         if (pi.fixed)
         {
-            // Boundary samples are static fluid samples at rest density.
-            // Their pressure is mirrored from the fluid particle in the
-            // pressure acceleration (p_ib = p_i), so none is stored here.
             pi.density = restDensity;
             pi.pressure = 0.0;
             continue;
         }
 
-        // Self-contribution: neighbor lists exclude the particle itself,
-        // but the SPH density sum runs over all j including j == i.
         double densitySum = pi.mass * cubicSplineKernel(0.0, smoothingRadius);
 
         for (std::size_t j : neighborSearch.getNeighbors(i))
@@ -244,9 +199,6 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
             const double kernelValue =
                 cubicSplineKernel(r2, smoothingRadius);
 
-            // rho_i = sum_if m_if W_iif + sum_ib m_ib W_iib: boundary samples
-            // contribute like fluid. Walls are thick enough (ceil(2h / dx)
-            // layers) to fill the kernel support.
             densitySum += pj.mass * kernelValue;
         }
         pi.density = densitySum;
@@ -256,293 +208,111 @@ void SPHSolver::computeDensityPressure(std::vector<Particle> &particles)
 
 void SPHSolver::computeForces(std::vector<Particle> &particles)
 {
-    const std::size_t particleCount = particles.size();
+    const double epsilon = 0.01 * smoothingRadius * smoothingRadius;
+    const double boundaryFactor = mirrorBoundaryPressure ? 2.0 : 1.0;
 
-    std::vector<Vector2D> accelNonPressure(
-        particleCount,
-        Vector2D(0.0, 0.0));
-
-    for (std::size_t i = 0; i < particleCount; ++i)
+    for (std::size_t i = 0; i < particles.size(); ++i)
     {
-        const Particle &pi = particles[i];
+        Particle &pi = particles[i];
 
         if (pi.fixed)
         {
-            accelNonPressure[i] = Vector2D(0.0, 0.0);
-
+            pi.acceleration = Vector2D(0.0, 0.0);
             continue;
         }
 
+        const double particleDensity = std::max(pi.density, 1e-8);
+        const double pressureTermI = pi.pressure / (particleDensity * particleDensity);
+
         Vector2D viscositySum(0.0, 0.0);
+        Vector2D pressureSumFluid(0.0, 0.0);
+        Vector2D pressureSumBoundary(0.0, 0.0);
 
         for (std::size_t j : neighborSearch.getNeighbors(i))
         {
             const Particle &pj = particles[j];
 
             const Vector2D rij = pi.position - pj.position;
-
             const double r2 = rij.x * rij.x + rij.y * rij.y;
-
             const double r = std::sqrt(r2);
 
             if (r <= 0.0)
             {
                 continue;
             }
-
-            const Vector2D vRel = pi.velocity - pj.velocity;
-
-            const double vijDotXij = vRel.x * rij.x + vRel.y * rij.y;
-
-            const double epsilon = 0.01 * smoothingRadius * smoothingRadius;
 
             const Vector2D gradW = cubicSplineGradient(rij, r, smoothingRadius);
-
             const double neighborDensity = std::max(pj.density, 1e-8);
 
-            viscositySum +=
-                (pj.mass / neighborDensity) *
-                (vijDotXij / (r2 + epsilon)) *
-                gradW;
-        }
-        const Vector2D viscosityAcceleration =
-            2.0 * viscosity * viscositySum;
+            const Vector2D vRel = pi.velocity - pj.velocity;
+            const double vijDotXij = vRel.x * rij.x + vRel.y * rij.y;
+            viscositySum += (pj.mass / neighborDensity) * (vijDotXij / (r2 + epsilon)) * gradW;
 
-        accelNonPressure[i] =
-            viscosityAcceleration +
-            gravity;
-    }
-
-    for (std::size_t i = 0; i < particleCount; ++i)
-    {
-        Particle &pi = particles[i];
-
-        if (pi.fixed)
-        {
-            pi.acceleration =
-                Vector2D(0.0, 0.0);
-
-            continue;
-        }
-
-        Vector2D pressureForceSumFluid(0.0, 0.0);
-        Vector2D pressureForceSumBoundary(0.0, 0.0);
-
-        for (std::size_t j : neighborSearch.getNeighbors(i))
-        {
-            const Particle &pj = particles[j];
-
-            const Vector2D rij =
-                pi.position - pj.position;
-
-            const double r2 =
-                rij.x * rij.x +
-                rij.y * rij.y;
-
-            const double r = std::sqrt(r2);
-
-            if (r <= 0.0)
-            {
-                continue;
-            }
-
-            const double particleDensity =
-                std::max(pi.density, 1e-8);
-
-            const double neighborDensity =
-                std::max(pj.density, 1e-8);
-
-            double pressureTermFluid = 0.0;
-            double pressureTermBoundary = 0.0;
-
-            if (!pj.fixed)
-            {
-                // Fluid-Fluid interaction
-                pressureTermFluid =
-                    (pi.pressure / (particleDensity * particleDensity) +
-                     pj.pressure / (neighborDensity * neighborDensity));
-            }
             if (pj.fixed)
             {
-                // Fluid-boundary interaction with mirrored pressure and
-                // density, p_ib = p_i and rho_ib = rho_i:
-                //   a_i^p = ... - sum_ib m_ib (p_i/rho_i^2 + p_i/rho_i^2) grad W_iib
-                // Without mirroring (p_ib = 0) only the first term remains.
-                const double boundaryFactor = mirrorBoundaryPressure ? 2.0 : 1.0;
-                pressureTermBoundary =
-                    boundaryFactor * pi.pressure /
-                    (particleDensity * particleDensity);
+                pressureSumBoundary += -pj.mass * (boundaryFactor * pressureTermI) * gradW;
             }
-
-            const Vector2D gradW =
-                cubicSplineGradient(
-                    rij,
-                    r,
-                    smoothingRadius);
-
-            if (!pj.fixed)
+            else
             {
-                pressureForceSumFluid +=
-                    -pj.mass *
-                    pressureTermFluid *
-                    gradW;
-            }
-            if (pj.fixed)
-            {
-                pressureForceSumBoundary +=
-                    -pj.mass *
-                    pressureTermBoundary *
-                    gradW;
+                pressureSumFluid += -pj.mass * (pressureTermI + pj.pressure / (neighborDensity * neighborDensity)) * gradW;
             }
         }
 
-        const Vector2D pressureAcceleration =
-            pressureForceSumFluid + pressureForceSumBoundary;
-        pi.acceleration =
-            accelNonPressure[i] +
-            pressureAcceleration;
+        const Vector2D nonPressureAcceleration = 2.0 * viscosity * viscositySum + gravity;
+        pi.acceleration = nonPressureAcceleration + (pressureSumFluid + pressureSumBoundary);
     }
 }
 
-void SPHSolver::integrate(
-    std::vector<Particle> &particles,
-    double dt)
+void SPHSolver::integrate(std::vector<Particle> &particles, double dt)
 {
-    const double maxSpeed = 2000.0;
+    const double collisionRadius = 0.5 * getParticleSpacing();
+    const double collisionRadiusSquared = collisionRadius * collisionRadius;
 
-    for (std::size_t particleIndex = 0;
-         particleIndex < particles.size();
-         ++particleIndex)
+    for (std::size_t particleIndex = 0; particleIndex < particles.size(); ++particleIndex)
     {
         Particle &particle = particles[particleIndex];
 
-        particle.velocity +=
-            particle.acceleration * dt;
-
-        /*
-         * Safety clamp to prevent numerical explosions from
-         * completely destroying the simulation.
-         */
-        const double speedSquared =
-            particle.velocity.x *
-                particle.velocity.x +
-            particle.velocity.y *
-                particle.velocity.y;
-
-        if (speedSquared >
-            maxSpeed * maxSpeed)
+        if (particle.fixed)
         {
-
-            const double speed =
-                std::sqrt(speedSquared);
-
-            particle.velocity *=
-                (maxSpeed / speed);
+            continue;
         }
 
-        particle.position +=
-            particle.velocity * dt;
+        particle.velocity += particle.acceleration * dt;
+        particle.position += particle.velocity * dt;
 
-        if (!particle.fixed)
+        std::size_t closestFixed = particles.size();
+        double closestDistanceSquared = collisionRadiusSquared;
+
+        for (std::size_t neighborIndex : neighborSearch.getNeighbors(particleIndex))
         {
-            // Safety net only: resting fluid sits a full spacing away from
-            // the wall particles, so this projection does not engage unless
-            // a particle is about to penetrate the wall.
-            const double collisionRadius = 0.5 * getParticleSpacing();
-            const double collisionRadiusSquared =
-                collisionRadius * collisionRadius;
-            std::size_t closestFixed = particles.size();
-            double closestDistanceSquared = collisionRadiusSquared;
-
-            for (std::size_t neighborIndex :
-                 neighborSearch.getNeighbors(particleIndex))
+            if (!particles[neighborIndex].fixed)
             {
-                if (!particles[neighborIndex].fixed)
-                {
-                    continue;
-                }
-
-                const Vector2D offset =
-                    particle.position -
-                    particles[neighborIndex].position;
-                const double distanceSquared =
-                    offset.x * offset.x +
-                    offset.y * offset.y;
-
-                if (distanceSquared < closestDistanceSquared)
-                {
-                    closestDistanceSquared = distanceSquared;
-                    closestFixed = neighborIndex;
-                }
+                continue;
             }
 
-            if (closestFixed < particles.size() &&
-                closestDistanceSquared > 0.0)
+            const Vector2D offset = particle.position - particles[neighborIndex].position;
+            const double distanceSquared = offset.x * offset.x + offset.y * offset.y;
+
+            if (distanceSquared < closestDistanceSquared)
             {
-                const Vector2D offset =
-                    particle.position - particles[closestFixed].position;
-                const double distance =
-                    std::sqrt(closestDistanceSquared);
-                const Vector2D normal = offset / distance;
-
-                particle.position =
-                    particles[closestFixed].position +
-                    normal * collisionRadius;
-
-                const double velocityAlongNormal =
-                    particle.velocity.x * normal.x +
-                    particle.velocity.y * normal.y;
-                if (velocityAlongNormal < 0.0)
-                {
-                    particle.velocity -=
-                        normal *
-                        ((1.0 + boundaryDamping) *
-                         velocityAlongNormal);
-                }
+                closestDistanceSquared = distanceSquared;
+                closestFixed = neighborIndex;
             }
         }
 
-        /*
-         * Boundary collision handling.
-         */
-        if (particle.position.x < 0.0)
+        if (closestFixed < particles.size() && closestDistanceSquared > 0.0)
         {
-            particle.position.x = 0.0;
+            const Vector2D offset = particle.position - particles[closestFixed].position;
+            const Vector2D normal = offset / std::sqrt(closestDistanceSquared);
 
-            particle.velocity.x =
-                -particle.velocity.x *
-                boundaryDamping;
-        }
-        else if (particle.position.x >
-                 boundaryWidth)
-        {
+            particle.position = particles[closestFixed].position + normal * collisionRadius;
 
-            particle.position.x =
-                boundaryWidth;
-
-            particle.velocity.x =
-                -particle.velocity.x *
-                boundaryDamping;
-        }
-
-        if (particle.position.y < 0.0)
-        {
-            particle.position.y = 0.0;
-
-            particle.velocity.y =
-                -particle.velocity.y *
-                boundaryDamping;
-        }
-        else if (particle.position.y >
-                 boundaryHeight)
-        {
-
-            particle.position.y =
-                boundaryHeight;
-
-            particle.velocity.y =
-                -particle.velocity.y *
-                boundaryDamping;
+            const double velocityAlongNormal =
+                particle.velocity.x * normal.x + particle.velocity.y * normal.y;
+            if (velocityAlongNormal < 0.0)
+            {
+                particle.velocity -= normal * ((1.0 + boundaryDamping) * velocityAlongNormal);
+            }
         }
     }
 }
@@ -577,23 +347,13 @@ double SPHSolver::cubicSplineKernel(
                 (2 - q));
     }
 
-    if (0.0 <= q && q < 1.0)
-    {
-        return alpha *
-               ((2.0 - q) *
-                    (2.0 - q) *
-                    (2.0 - q) -
-                4.0 * (1.0 - q) *
-                    (1.0 - q) *
-                    (1.0 - q));
-    }
-
-    const double t =
-        2.0 - q;
-
     return alpha *
-           0.25 *
-           t * t * t;
+           ((2.0 - q) *
+                (2.0 - q) *
+                (2.0 - q) -
+            4.0 * (1.0 - q) *
+                (1.0 - q) *
+                (1.0 - q));
 }
 
 Vector2D SPHSolver::cubicSplineGradient(

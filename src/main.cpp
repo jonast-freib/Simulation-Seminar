@@ -15,13 +15,11 @@ int main()
     const unsigned int windowWidth = 1700;
     const unsigned int windowHeight = 900;
 
-    // Simulated time advanced per rendered frame. The solver splits it into
-    // as many substeps as the stability limits require.
+
     constexpr double frameTime = 1.0 / 60.0;
 
     Renderer renderer(windowWidth, windowHeight, "SPH Fluid Solver", particleRadius);
     SPHSolver sphSolver;
-    sphSolver.setBounds(windowWidth, windowHeight);
 
     // Debug sliders for tuning parameters at runtime.
     enum SliderIndex
@@ -80,7 +78,6 @@ int main()
         renderer.setSliderValue(SmoothingRadiusSlider, static_cast<float>(scene.parameters.smoothingRadius));
         renderer.setSliderValue(GravitySlider, static_cast<float>(scene.parameters.gravity));
 
-        // Colour scale: hydrostatic pressure at the bottom of the initial fluid body.
         renderer.setReferencePressure(scene.parameters.restDensity * scene.parameters.gravity * scene.fluidHeight);
         renderer.resetColorSmoothing();
 
@@ -113,14 +110,12 @@ int main()
         }
         if (renderer.consumeButtonPress(ColorButton))
         {
-            // Toggle fluid colouring: pressure map <-> plain blue (walls stay grey).
             renderer.setColorByPressure(!renderer.isColorByPressure());
         }
 
         ++frameCounter;
         if (frameCounter >= 60)
         {
-            // Read slider values and apply to solver at a reduced cadence.
             sphSolver.setRestDensity(renderer.getSliderValue(RestDensitySlider));
             sphSolver.setStiffness(renderer.getSliderValue(StiffnessSlider));
             sphSolver.setViscosity(renderer.getSliderValue(ViscositySlider));
@@ -132,7 +127,6 @@ int main()
                 particle.mass = currentParticleMass;
             }
 
-            // Diagnostics: the density error should stay around 1% for c = 10 * v_max.
             double maxDensityError = 0.0;
             double maxSpeed = 0.0;
             for (const auto &p : particles)

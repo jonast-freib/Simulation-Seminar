@@ -36,7 +36,6 @@ static void testHydrostaticColumn()
     Scene scene = makeHydrostaticScene(1700.0, 900.0);
     SPHSolver solver;
     applySceneParameters(solver, scene.parameters);
-    solver.setBounds(1700.0, 900.0);
 
     const SceneParameters &params = scene.parameters;
     const double cflLimit = 0.4 * params.smoothingRadius / solver.getPressureWaveSpeed();

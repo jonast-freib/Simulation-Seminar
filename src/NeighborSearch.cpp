@@ -1,14 +1,12 @@
 #include "NeighborSearch.h"
-#include <cmath>
 
 NeighborSearch::NeighborSearch(double smoothingRadius)
-    : smoothingRadius(smoothingRadius), smoothingRadiusSquared(smoothingRadius * smoothingRadius)
+    : smoothingRadiusSquared(smoothingRadius * smoothingRadius)
 {
 }
 
 void NeighborSearch::setRadius(double newRadius)
 {
-    smoothingRadius = newRadius;
     smoothingRadiusSquared = newRadius * newRadius;
 }
 

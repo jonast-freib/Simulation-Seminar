@@ -21,8 +21,6 @@ public:
 			  double viscosity = 200.0,
 			  const Vector2D& gravity = Vector2D(0.0, 10.0));
 
-	void setBounds(double width, double height);
-
 	void setRestDensity(double rho0);
 	void setStiffness(double k);
 	void setViscosity(double mu);
@@ -34,13 +32,10 @@ public:
 	void setBoundaryPressureMirroring(bool enabled);
 
 	double getParticleMass() const;
-	double getSmoothingRadius() const;
-	double getStiffness() const;
 	// Speed of pressure waves at rest density, sqrt(dp/drho) = sqrt(7 k / rho_0).
 	// Used by the CFL condition and for Mach-number diagnostics.
 	double getPressureWaveSpeed() const;
 	double getRestDensity() const;
-	double getKernelSpacingRatio() const;
 
 	// Initial particle spacing dx = h / (h/dx) that the particle mass is calibrated for.
 	double getParticleSpacing() const;
@@ -78,14 +73,11 @@ private:
 
 private:
 	double smoothingRadius;
-	double smoothingRadiusSquared;
 	double restDensity;
 	double stiffness;
 	double viscosity;
 	Vector2D gravity;
 
-	double boundaryWidth;
-	double boundaryHeight;
 	double boundaryDamping;
 
 	double kernelSpacingRatio;

@@ -11,7 +11,7 @@ public:
     void handleEvents();
     void clear();
     void drawParticles(const std::vector<Particle>& particles);
-    // Pressure mapped to the top of the colour scale; <= 0 means per-frame min/max.
+    // Pressure mapped to the top of the colour scale (0 maps to the bottom).
     void setReferencePressure(double pressure);
     // Forget the time-averaged pressures (call when the particle set is replaced).
     void resetColorSmoothing();
@@ -40,10 +40,6 @@ private:
     std::vector<double> smoothedPressure;
     bool colorByPressure = true;
     sf::Font font;
-    sf::Text fpsText;
-    sf::Clock fpsClock;
-    int frameCount = 0;
-    float timeElapsed = 0.f;
     bool fontLoaded = false;
     struct Slider {
         std::string name;

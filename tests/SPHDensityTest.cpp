@@ -7,13 +7,10 @@
 
 #include "SPHSolver.h"
 
-// An isolated particle must still carry its own mass in the density sum:
-// rho_i = m_i * W(0, h), with W(0, h) = 4 * 5 / (14 * pi * h^2) for the 2D cubic spline.
 static void testIsolatedParticleDensity()
 {
     const double h = 10.0;
     SPHSolver solver(h, 300.0, 500.0, 0.0, Vector2D(0.0, 0.0));
-    solver.setBounds(1000.0, 1000.0);
 
     std::vector<Particle> particles;
     particles.emplace_back(Vector2D(500.0, 500.0), solver.getParticleMass(), false);
@@ -24,14 +21,11 @@ static void testIsolatedParticleDensity()
     assert(std::abs(particles[0].density - expected) < 1e-9 * expected);
 }
 
-// The particle mass is calibrated as rho0 * dx^2, so a particle in the
-// interior of a regular lattice with spacing dx should sit close to rho0.
 static void testLatticeInteriorReachesRestDensity()
 {
     const double h = 10.0;
     const double rho0 = 300.0;
     SPHSolver solver(h, rho0, 500.0, 0.0, Vector2D(0.0, 0.0));
-    solver.setBounds(1000.0, 1000.0);
 
     const double spacing = solver.getParticleSpacing();
     const int n = 21;

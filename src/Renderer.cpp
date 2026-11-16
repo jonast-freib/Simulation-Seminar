@@ -6,18 +6,15 @@
 #include <cstdint>
 
 Renderer::Renderer(unsigned int width, unsigned int height, const std::string &title, float particleRadius)
-    : window(sf::VideoMode(sf::Vector2u(width, height)), title), particleBuffer(sf::PrimitiveType::Triangles, sf::VertexBuffer::Usage::Stream), particleVertices(), particleRadius(particleRadius), fpsText(font, "", 24)
+    : window(sf::VideoMode(sf::Vector2u(width, height)), title), particleBuffer(sf::PrimitiveType::Triangles, sf::VertexBuffer::Usage::Stream), particleVertices(), particleRadius(particleRadius)
 {
-    // window.setFramerateLimit(60);
     createParticleTexture();
 
     if (!font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"))
     {
-        // Fallback: try another common font path
         if (!font.openFromFile("/usr/share/fonts/truetype/freefont/FreeSans.ttf"))
         {
-            // If no font found, just skip FPS display
-            std::cerr << "Warning: Could not load font for FPS display" << std::endl;
+            std::cerr << "Warning: Could not load font for slider and button labels" << std::endl;
             fontLoaded = false;
         }
         else
@@ -28,12 +25,6 @@ Renderer::Renderer(unsigned int width, unsigned int height, const std::string &t
     else
     {
         fontLoaded = true;
-    }
-
-    if (fontLoaded)
-    {
-        fpsText.setFillColor(sf::Color::White);
-        fpsText.setPosition(sf::Vector2f(10.f, 10.f));
     }
 }
 
@@ -117,7 +108,6 @@ void Renderer::handleEvents()
             window.close();
         }
 
-        // Handle slider interaction
         if (event->is<sf::Event::MouseButtonPressed>())
         {
             const sf::Vector2i mp = sf::Mouse::getPosition(window);
@@ -133,7 +123,6 @@ void Renderer::handleEvents()
         }
         else if (event->is<sf::Event::MouseButtonReleased>())
         {
-            // On mouse release, stop dragging sliders and detect button presses
             const sf::Vector2i mp = sf::Mouse::getPosition(window);
             const sf::Vector2f mpf(static_cast<float>(mp.x), static_cast<float>(mp.y));
             for (auto &s : sliders)
@@ -186,34 +175,6 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
     const float texWidth = static_cast<float>(particleTexture.getSize().x);
     const float texHeight = static_cast<float>(particleTexture.getSize().y);
 
-    // Pressure colour scale. With a reference pressure set (e.g. the
-    // hydrostatic pressure rho0 * g * H at the tank bottom) the scale is fixed,
-    // so resting fluid shows a depth gradient and impacts saturate to red.
-    // Otherwise fall back to the current min/max of the fluid particles.
-    double minP = 0.0;
-    double maxP = referencePressure;
-    if (maxP <= 0.0)
-    {
-        minP = std::numeric_limits<double>::infinity();
-        maxP = -std::numeric_limits<double>::infinity();
-        for (const auto &p : particles)
-        {
-            if (p.fixed)
-                continue;
-            minP = std::min(minP, p.pressure);
-            maxP = std::max(maxP, p.pressure);
-        }
-        if (minP == std::numeric_limits<double>::infinity())
-        {
-            minP = 0.0;
-            maxP = 1.0;
-        }
-    }
-
-    // Temporal smoothing of the displayed pressure. Weakly compressible SPH
-    // carries acoustic pressure oscillations much faster than the frame rate;
-    // sampled once per frame they make the colours blink. An exponential
-    // moving average per particle shows the underlying pressure field.
     constexpr double smoothingTimeConstant = 0.15; // seconds
     constexpr double frameTime = 1.0 / 60.0;
     const double blend = 1.0 - std::exp(-frameTime / smoothingTimeConstant);
@@ -231,29 +192,21 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
 
     auto pressureToColor = [&](std::size_t index, const Particle &particle) -> sf::Color
     {
-        // Walls are drawn neutral; their pressure is only a boundary condition.
         if (particle.fixed)
         {
             return sf::Color(140, 140, 140, 220);
         }
 
-        // Plain mode: one colour for all fluid particles.
         if (!colorByPressure)
         {
             return sf::Color(42, 120, 214, 220);
         }
 
-        // If CFL violated, show red
-        if (particle.cflViolated)
-        {
-            return sf::Color(200, 0, 0, 220);
-        }
-
         double n = 0.0;
-        if (maxP > minP)
-            n = (smoothedPressure[index] - minP) / (maxP - minP);
+        if (referencePressure > 0.0)
+            n = smoothedPressure[index] / referencePressure;
         n = std::max(0.0, std::min(1.0, n));
-        // simple blue -> cyan -> green -> yellow -> red mapping
+
         const double r = std::min(1.0, std::max(0.0, 1.5 * n));
         const double g = std::max(0.0, 1.0 - std::abs(n - 0.5) * 2.0);
         const double b = std::min(1.0, std::max(0.0, 1.5 * (1.0 - n)));
@@ -299,7 +252,6 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
 
     window.draw(particleBuffer, &particleTexture);
 
-    // Draw UI sliders on top
     for (const auto &s : sliders)
     {
         window.draw(s.track);
@@ -313,7 +265,6 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
         }
     }
 
-    // Draw buttons
     for (const auto &b : buttons)
     {
         window.draw(b.rect);
@@ -321,7 +272,7 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
         {
             sf::Text label(font, b.name, 16);
             label.setFillColor(sf::Color::White);
-            // center label in button
+
             const sf::Vector2f pos = b.rect.getPosition();
             const sf::Vector2f size = b.rect.getSize();
             label.setPosition(sf::Vector2f(pos.x + 6.f, pos.y + (size.y - 16.f) * 0.5f));

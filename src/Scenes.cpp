@@ -4,19 +4,12 @@
 
 namespace
 {
-// Number of fixed-particle layers so the walls fill the full kernel support
-// (2h) of a fluid particle touching the wall.
+
 int wallLayerCount(double h, double spacing)
 {
     return static_cast<int>(std::ceil(2.0 * h / spacing));
 }
 
-// Reference stiffness coefficient k_ref for the state equation
-// p = k ((rho / rho_0)^7 - 1). Pressure waves travel at sqrt(7 k / rho_0);
-// making that ten times the maximum flow speed v_max keeps density errors
-// around 1 % (they scale with (v_max / wave speed)^2). The fastest flow is
-// roughly free fall from the top of the fluid body, v_max = sqrt(2 g H):
-//   k_ref = rho_0 (10 v_max)^2 / 7.
 double referenceStiffness(double rho0, double g, double fluidHeight)
 {
     const double maxFlowSpeed = std::sqrt(2.0 * g * fluidHeight);
@@ -35,9 +28,7 @@ Tank centeredTank(double windowWidth, double windowHeight, double width, double 
         closedTop};
 }
 
-// The wall surface coincides with the tank edge: fluid particles sit half a
-// spacing inside it and the first wall layer half a spacing outside it, so
-// neighbouring fluid and wall particles are one spacing apart.
+
 void addTankWalls(std::vector<Particle> &particles, const Tank &tank,
                   double h, double spacing, double mass)
 {
@@ -54,7 +45,7 @@ void addTankWalls(std::vector<Particle> &particles, const Tank &tank,
     {
         const double offset = (layer + 0.5) * spacing;
 
-        // Bottom wall (and lid), extended over the side walls to close the corners.
+
         for (int col = 0; col < horizontalColumns; ++col)
         {
             const double x = tank.left - outer + col * spacing;
@@ -65,7 +56,6 @@ void addTankWalls(std::vector<Particle> &particles, const Tank &tank,
             }
         }
 
-        // Side walls.
         for (int row = 0; row < sideRows; ++row)
         {
             const double y = bottom - (row + 0.5) * spacing;
@@ -75,8 +65,7 @@ void addTankWalls(std::vector<Particle> &particles, const Tank &tank,
     }
 }
 
-// Fill [x0, x0 + width] x [bottom - height, bottom] with fluid on a square lattice
-// whose outermost particles sit half a spacing inside the region.
+
 void addFluidBlock(std::vector<Particle> &particles, double x0, double bottom,
                    double width, double height, double spacing, double mass)
 {
@@ -125,7 +114,7 @@ Scene makeTankScene(const std::string &name, const Tank &tank,
 
 Scene makeDamBreakScene(double windowWidth, double windowHeight, const SceneOptions &options)
 {
-    // Column a = 200, H = 400 (aspect n^2 = H / a = 2, as in Martin & Moyce 1952).
+
     const Tank tank = centeredTank(windowWidth, windowHeight, 800.0, 520.0, true);
     return makeTankScene("Dam break", tank, 200.0, 400.0, options);
 }

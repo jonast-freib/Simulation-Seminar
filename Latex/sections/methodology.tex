@@ -13,7 +13,7 @@ For a quantity $A$ at particle $i$, the SPH approximation is
 \end{equation}
 where $m_j$ is the particle mass, $\rho_j$ the density, $\boldsymbol{x}_j$ the
 position, $h$ the smoothing length, and $W$ a kernel with compact support
-\cite{lucy1977,monaghan1992}. We use the two-dimensional cubic spline with
+\cite{teschner_notes}. We use the two-dimensional cubic spline with
 support $2h$,
 \begin{equation}
     W(q) = \alpha
@@ -42,7 +42,7 @@ particle itself and the boundary samples (Section~\ref{sec:boundary}),
 \end{equation}
 where $i_f$ denotes the fluid and $i_b$ the boundary neighbours of $i$. The
 pressure follows the state equation of weakly compressible SPH
-\cite{teschner_notes,monaghan1994,becker2007},
+\cite{teschner_notes,becker2007},
 \begin{equation}
     p_i = \max\left(k\left(\left(\frac{\rho_i}{\rho_0}\right)^7 - 1\right), 0\right),
     \label{eq:state}
@@ -76,7 +76,7 @@ a non-pressure part,
 \end{align}
 with $\boldsymbol{x}_{ij} = \boldsymbol{x}_i - \boldsymbol{x}_j$,
 $\boldsymbol{v}_{ij} = \boldsymbol{v}_i - \boldsymbol{v}_j$, the dimensionality
-$d = 2$, and the kinematic viscosity $\nu$ \cite{morris1997}. The Laplacian is
+$d = 2$, and the kinematic viscosity $\nu$ \cite{teschner_notes}. The Laplacian is
 approximated with the first kernel derivative because the second derivative is
 sensitive to particle disorder. Besides modelling friction, the viscosity damps
 the acoustic oscillations that a weakly compressible fluid carries.
@@ -116,7 +116,6 @@ This projection is not part of the course notes; fluid at rest sits a full
 spacing away from the wall, so it does not act in quiescent regions.
 
 \subsection{Time Integration}
-
 Velocities and positions are updated with the semi-implicit (symplectic) Euler
 scheme of the course notes,
 \begin{equation}

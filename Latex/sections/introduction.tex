@@ -3,12 +3,12 @@
 Particle-based methods are useful for simulating fluids with free surfaces and
 changing topology. Smoothed particle hydrodynamics represents a continuum by a
 set of moving particles and approximates field quantities using a smoothing
-kernel \cite{lucy1977,monaghan1992}.
+kernel \cite{lucy1977}.
 
 The goal of this project is to implement and inspect a compact two-dimensional
 SPH solver in C++17 following the state-equation SPH (SESPH) scheme of the
 course notes \cite{teschner_notes}. The fluid is treated as weakly compressible
-\cite{monaghan1994,becker2007}: pressure follows a stiff state equation with
+\cite{becker2007}: pressure follows a stiff state equation with
 stiffness coefficient $k$, the time step adapts to the CFL condition, and solid
 walls are made of static boundary samples whose pressure is mirrored from the
 fluid. An interactive SFML renderer displays the simulation, and a

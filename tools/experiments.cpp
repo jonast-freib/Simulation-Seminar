@@ -1,13 +1,3 @@
-// Headless experiment runner for the seminar paper.
-//
-// Runs the dam-break and hydrostatic-column scenes for the default setup and
-// for parameter sweeps (stiffness coefficient k, viscosity, h/dx) and writes CSV files
-// that Latex/plots/make_plots.py turns into figures.
-//
-// Usage: sph_experiments <output-directory>
-//
-// Coordinates in all snapshot files are relative to the tank: x is measured
-// from the left wall surface, y is the height above the floor.
 
 #include <algorithm>
 #include <atomic>
@@ -56,7 +46,6 @@ std::string formatValue(double value)
     return stream.str();
 }
 
-// A scene together with a solver configured for it.
 struct Simulation
 {
     Scene scene;
@@ -68,8 +57,6 @@ struct Simulation
     explicit Simulation(Scene s) : scene(std::move(s))
     {
         applySceneParameters(solver, scene.parameters);
-        solver.setBounds(windowWidth, windowHeight);
-        // One zero-length step so density and pressure are defined at t = 0.
         solver.step(scene.particles, 0.0);
     }
 
@@ -121,10 +108,7 @@ DensityStats densityStats(const Simulation &sim)
     return stats;
 }
 
-// Leading edge of the collapsing column along the floor, measured from the
-// left wall. Only particles within 3 spacings of the floor count, so splashes
-// do not define the front. Half a spacing is added for the particle extent,
-// so the initial front equals the column width a.
+
 double damFront(const Simulation &sim)
 {
     const double dx = sim.solver.getParticleSpacing();
@@ -152,8 +136,7 @@ void writeSnapshot(const Simulation &sim, const std::string &name,
     }
 }
 
-// Exponential moving average of each particle's pressure (time constant tau),
-// the same smoothing the renderer uses to suppress acoustic flicker.
+
 void updateSmoothedPressure(const Simulation &sim, std::vector<double> &smoothed, double tau)
 {
     const double blend = 1.0 - std::exp(-frameTime / tau);
@@ -203,7 +186,6 @@ void writeSceneMeta()
     }
 }
 
-// E1: hydrostatic column with the default setup.
 void runHydrostatic()
 {
     Simulation sim(makeHydrostaticScene(windowWidth, windowHeight));
@@ -240,8 +222,7 @@ void runHydrostatic()
             ++averagedFrames;
         }
     }
-
-    // Depth below the initial free surface; the column compresses by < 1 %.
+    
     std::ofstream profile = openCsv("hydro_profile.csv", "x,depth,pressure,pressure_time_averaged,hydrostatic");
     for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
     {
@@ -319,7 +300,6 @@ struct SweepResult
     double damMaxDensityError = 0.0;  // max over the run
     double damMeanMaxDensityError = 0.0; // time average of the per-frame max
     double damSubstepsPerFrame = 0.0;
-    double damRuntime = 0.0;          // wall-clock seconds per simulated second
     double damFrontAtT15 = 0.0;
     // hydrostatic column (after settling)
     double hydroMaxDensityError = 0.0;
@@ -353,7 +333,6 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
         bool snapshotWritten = false;
         bool frontRecorded = false;
         double errorSum = 0.0;
-        const auto start = std::chrono::steady_clock::now();
         while (sim.time * timeScale < 3.0 - 1e-9)
         {
             sim.advanceFrame();
@@ -373,11 +352,8 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
                 snapshotWritten = true;
             }
         }
-        const double elapsed =
-            std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         result.damMeanMaxDensityError = errorSum / sim.frames;
         result.damSubstepsPerFrame = static_cast<double>(sim.substeps) / sim.frames;
-        result.damRuntime = elapsed / sim.time;
     }
 
     // --- hydrostatic column: settle 5 s, then measure for 2 s ---
@@ -480,12 +456,12 @@ void writeSweep(const std::string &name, const std::vector<SweepResult> &results
     std::ofstream file = openCsv(
         name,
         "parameter,value,dam_max_density_error,dam_mean_max_density_error,dam_substeps_per_frame,"
-        "dam_runtime_per_sim_second,dam_front_T1.5,hydro_max_density_error,hydro_pressure_deviation,"
+        "dam_front_T1.5,hydro_max_density_error,hydro_pressure_deviation,"
         "hydro_averaged_pressure_deviation,hydro_frame_to_frame_change,hydro_mean_neighbors");
     for (const SweepResult &r : results)
     {
         file << r.parameter << ',' << r.value << ',' << r.damMaxDensityError << ',' << r.damMeanMaxDensityError
-             << ',' << r.damSubstepsPerFrame << ',' << r.damRuntime << ',' << r.damFrontAtT15 << ','
+             << ',' << r.damSubstepsPerFrame << ',' << r.damFrontAtT15 << ','
              << r.hydroMaxDensityError << ',' << r.hydroPressureDeviation << ','
              << r.hydroAveragedPressureDeviation << ',' << r.hydroFrameToFrameChange << ','
              << r.hydroMeanNeighbors << '\n';

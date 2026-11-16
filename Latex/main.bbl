@@ -1,4 +1,4 @@
-\begin{thebibliography}{10}
+\begin{thebibliography}{1}
 
 \bibitem{band2018iisph}
 Stefan Band, Christoph Gissler, Markus Ihmsen, Jens Cornelis, Andreas Peer, and Matthias Teschner.
@@ -34,16 +34,6 @@ J.~C. Martin and W.~J. Moyce.
 Joseph~J. Monaghan.
 \newblock Smoothed particle hydrodynamics.
 \newblock {\em Annual Review of Astronomy and Astrophysics}, 30:543--574, 1992.
-
-\bibitem{monaghan1994}
-Joseph~J. Monaghan.
-\newblock Simulating free surface flows with {SPH}.
-\newblock {\em Journal of Computational Physics}, 110(2):399--406, 1994.
-
-\bibitem{morris1997}
-Joseph~P. Morris, Patrick~J. Fox, and Yi~Zhu.
-\newblock Modeling low reynolds number incompressible flows using sph.
-\newblock {\em Journal of Computational Physics}, 136(1):214--226, 1997.
 
 \bibitem{ritter1892}
 A.~Ritter.

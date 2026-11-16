@@ -17,7 +17,6 @@ public:
     const std::vector<std::size_t>& getNeighbors(std::size_t particleIndex) const;
 
 private:
-    double smoothingRadius;
     double smoothingRadiusSquared;
     std::vector<std::vector<std::size_t>> neighborLists;
 };
