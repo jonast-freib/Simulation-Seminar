@@ -16,28 +16,45 @@
 \lstset{basicstyle=\ttfamily\small, frame=single, breaklines=true}
 
 \title{A Two-Dimensional Smoothed Particle Hydrodynamics Solver}
-\author{Author Name}
+\author{Jonas Turek}
 \date{\today}
 
 \begin{document}
 
-\maketitle
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\large\scshape Seminar Paper\par}
+  \vspace{0.4cm}
+  {\large Simulation Lab Course\par}
+  \vspace{2.5cm}
+  \vspace{0.5cm}
+  {\LARGE\bfseries Two-Dimensional Smoothed Particle\\[0.2cm] Hydrodynamics Solver\par}
+  \vspace{0.3cm}
+  \vspace{1.5cm}
+  {\Large Jonas Turek\par}
+  \vfill
+  \vfill
+  {\large \today\par}
+\end{titlepage}
+
+\vspace*{\fill}
+\renewcommand{\abstractname}{\Large Abstract\vspace{0.3cm}}
 \begin{abstract}
-This paper documents the design and evaluation of a small two-dimensional
-smoothed particle hydrodynamics (SPH) solver that follows the state-equation
-SPH scheme of the course notes. The fluid is modelled as weakly compressible
-with a stiff state equation, the time step adapts to the CFL, force, and viscous
-stability limits, and walls are represented by static boundary samples with
-mirrored pressure. The solver is evaluated on a hydrostatic column and a dam
+\large
+This seminar paper documents the design and evaluation of a small two-dimensional
+smoothed particle hydrodynamics (SPH) solver. The fluid is modelled as weakly compressible
+with a stiff state equation, the time step adapts to the Courant–Friedrichs–Lewy (CFL) condition, force, and viscous
+stability limits, and walls are simulated as static boundary particles with
+mirrored pressure. The solver is evaluated on a hydrostatic column simulation and a dam
 break. Parameter studies quantify how the stiffness coefficient, the viscosity,
 and the ratio of smoothing length to particle spacing affect compressibility,
-pressure noise, cost, and particle ordering, and a comparison of boundary
-pressures shows why mirroring removes a gap at the wall but feeds energy into
-the fluid.
+pressure noise, cost, and particle ordering. The solver is implemented in C++17 and uses SFML for visualisation.
 \end{abstract}
-
+\vspace*{\fill}
+\newpage
 \tableofcontents
-
+\newpage
 \input{sections/introduction}
 \input{sections/methodology}
 \input{sections/results}

@@ -1,24 +1,29 @@
 \begin{thebibliography}{1}
 
 \bibitem{band2018iisph}
-Stefan Band, Christoph Gissler, Markus Ihmsen, Jens Cornelis, Andreas Peer, and Matthias Teschner.
+Stefan Band, Christoph Gissler, Markus Ihmsen, Jens Cornelis, Andreas Peer, and
+  Matthias Teschner.
 \newblock Pressure boundaries for implicit incompressible {SPH}.
 \newblock {\em ACM Transactions on Graphics}, 37(2), 2018.
 
 \bibitem{band2018mls}
 Stefan Band, Christoph Gissler, Andreas Peer, and Matthias Teschner.
-\newblock {MLS} pressure boundaries for divergence-free and viscous {SPH} fluids.
+\newblock {MLS} pressure boundaries for divergence-free and viscous {SPH}
+  fluids.
 \newblock {\em Computers \& Graphics}, 76:37--46, 2018.
 
 \bibitem{becker2007}
 Markus Becker and Matthias Teschner.
 \newblock Weakly compressible {SPH} for free surface flows.
-\newblock In {\em Proceedings of the 2007 ACM SIGGRAPH/Eurographics Symposium on Computer Animation}, pages 209--217, 2007.
+\newblock In {\em Proceedings of the 2007 ACM SIGGRAPH/Eurographics Symposium
+  on Computer Animation}, pages 209--217, 2007.
 
 \bibitem{dehnen2012}
 Walter Dehnen and Hossam Aly.
-\newblock Improving convergence in smoothed particle hydrodynamics simulations without pairing instability.
-\newblock {\em Monthly Notices of the Royal Astronomical Society}, 425(2):1068--1082, 2012.
+\newblock Improving convergence in smoothed particle hydrodynamics simulations
+  without pairing instability.
+\newblock {\em Monthly Notices of the Royal Astronomical Society},
+  425(2):1068--1082, 2012.
 
 \bibitem{lucy1977}
 Leon~B. Lucy.
@@ -27,8 +32,10 @@ Leon~B. Lucy.
 
 \bibitem{martin1952}
 J.~C. Martin and W.~J. Moyce.
-\newblock Part {IV}. an experimental study of the collapse of liquid columns on a rigid horizontal plane.
-\newblock {\em Philosophical Transactions of the Royal Society of London. Series A}, 244(882):312--324, 1952.
+\newblock Part {IV}. an experimental study of the collapse of liquid columns on
+  a rigid horizontal plane.
+\newblock {\em Philosophical Transactions of the Royal Society of London.
+  Series A}, 244(882):312--324, 1952.
 
 \bibitem{monaghan1992}
 Joseph~J. Monaghan.
@@ -38,11 +45,13 @@ Joseph~J. Monaghan.
 \bibitem{ritter1892}
 A.~Ritter.
 \newblock Die {F}ortpflanzung der {W}asserwellen.
-\newblock {\em Zeitschrift des Vereines Deutscher Ingenieure}, 36:947--954, 1892.
+\newblock {\em Zeitschrift des Vereines Deutscher Ingenieure}, 36:947--954,
+  1892.
 
 \bibitem{teschner_notes}
 Matthias Teschner.
 \newblock Simulation in computer graphics -- particle fluids.
-\newblock Course notes, University of Freiburg, \url{https://cg.informatik.uni-freiburg.de/course_notes/sim_03_particleFluids.pdf}.
+\newblock Course notes, University of Freiburg,
+  \url{https://cg.informatik.uni-freiburg.de/course_notes/sim_03_particleFluids.pdf}.
 
 \end{thebibliography}
