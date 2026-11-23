@@ -1,0 +1,23 @@
+# Martin & Moyce (1952), Phil. Trans. R. Soc. A 244, 312-324, Table 2:
+# rectangular section, plane symmetry, n^2 = 2, a = 2 1/4 in. = 5.7 cm, mean column.
+# Values as printed: Z = z/a and T_MM = n t sqrt(g/a). make_plots.py converts
+# to this report's T = t sqrt(g/a) = T_MM / n. T was normalized in the paper
+# so that every record has T_MM = 1.19 at Z = 1.44 (time origin not measured).
+T_MM,Z_over_a
+0.41,1.11
+0.84,1.22
+1.19,1.44
+1.43,1.67
+1.63,1.89
+1.83,2.11
+1.98,2.33
+2.20,2.56
+2.32,2.78
+2.51,3.00
+2.65,3.22
+2.83,3.44
+2.97,3.67
+3.11,3.89
+3.33,4.11
+4.02,5.00
+4.44,5.89

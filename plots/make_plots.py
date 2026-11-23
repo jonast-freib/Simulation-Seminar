@@ -14,7 +14,6 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data"
 FIGURES = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "figures"
 
-# --- palette -----------------------------------------------------------------
 INK = "#0b0b0b"
 INK_SECONDARY = "#52514e"
 GRID = "#e4e3df"
@@ -23,12 +22,14 @@ SURFACE = "#ffffff"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 RED = "#e34948"
 NEUTRAL = "#f0efec"
+
+CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6"]
 ORDINAL = ["#c3dbf8", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
 SEQUENTIAL = LinearSegmentedColormap.from_list(
     "seq_blue", ["#9ec5f4", "#6da7ec", "#3987e5", "#1c5cab", "#0d366b"])
 DIVERGING = LinearSegmentedColormap.from_list("div_blue_red", [BLUE, NEUTRAL, RED])
 
-TEXT_WIDTH = 6.0  # inches, matches the A4 / 2.8 cm margin layout
+TEXT_WIDTH = 5.7  # inches, matches the A4 / 3.2 cm side margin layout
 
 plt.rcParams.update({
     "font.size": 9,
@@ -54,8 +55,8 @@ plt.rcParams.update({
 })
 
 
+
 def read_csv(name):
-    """Read a numeric CSV into a dict of numpy arrays (non-numeric columns kept as str)."""
     path = DATA / name
     with path.open() as f:
         rows = [r for r in csv.reader(line for line in f if not line.startswith("#"))]
@@ -90,7 +91,6 @@ def save(fig, name):
 
 
 def draw_particles(ax, snap, values, cmap, norm, size=3.0):
-    """Scatter fluid particles coloured by `values`; walls in neutral grey."""
     wall = snap["fixed"] > 0.5
     ax.scatter(snap["x"][wall], snap["y"][wall], s=size, c=WALL, linewidths=0, rasterized=True)
     sc = ax.scatter(snap["x"][~wall], snap["y"][~wall], s=size, c=values[~wall],
@@ -141,17 +141,6 @@ def fig_hydro_settling():
     save(fig, "hydro_settling.pdf")
 
 
-def martin_moyce():
-    """Experimental reference, if the user has filled in the template."""
-    path = DATA / "martin_moyce_n2.csv"
-    if not path.exists():
-        return None
-    data = read_csv("martin_moyce_n2.csv")
-    if len(data.get("T", [])) == 0:
-        return None
-    return data
-
-
 def fig_dam_front(meta):
     m = meta["dam"]
     n = np.sqrt(m["fluid_height"] / m["fluid_width"])
@@ -160,22 +149,27 @@ def fig_dam_front(meta):
     reach = front["T"] <= front["T"][np.argmax(front["Z_over_a"] >= tank_limit - 0.02)] + 0.05
 
     fig, ax = plt.subplots(figsize=(TEXT_WIDTH * 0.55, 2.8))
-    ax.plot(front["T"][reach], front["Z_over_a"][reach], color=BLUE, label="SPH (this work)")
+    ax.plot(front["T"][reach], front["Z_over_a"][reach], color=BLUE, label="SPH")
     T = np.linspace(0, 1.2, 50)
     ax.plot(T, 1 + 2 * n * T, color=AQUA, linestyle=":", linewidth=1.8,
-            label=r"shallow water, $Z/a = 1 + 2nT$")
-    mm = martin_moyce()
-    if mm is not None:
-        ax.plot(mm["T"], mm["Z_over_a"], linestyle="none", marker="o", markersize=4.5,
-                markerfacecolor=ORANGE, markeredgecolor=SURFACE, markeredgewidth=0.8,
-                label=r"Martin \& Moyce (1952), $n^2 = 2$")
+            label=r"Ritter, $Z/a = 1 + 2nT$")
+    # Experiment of Martin & Moyce; their time T_MM = n t sqrt(g/a) is converted
+    # to T = T_MM / n. Only points up to the far wall are shown.
+    with open(DATA / "martin_moyce_n2.csv") as file:
+        rows = [line.split(",") for line in file if line[:1].isdigit()]
+    mm_T = np.array([float(r[0]) for r in rows]) / n
+    mm_Z = np.array([float(r[1]) for r in rows])
+    shown = mm_Z <= tank_limit
+    ax.plot(mm_T[shown], mm_Z[shown], linestyle="none", marker="o",
+            markersize=4, markerfacecolor="none", markeredgecolor=ORANGE,
+            label="Martin & Moyce (experiment)")
     ax.axhline(tank_limit, color=INK_SECONDARY, linewidth=0.8)
     ax.text(0.05, tank_limit + 0.05, "far wall", color=INK_SECONDARY, fontsize=8, va="bottom")
     ax.set_xlabel(r"$T = t\sqrt{g/a}$")
     ax.set_ylabel(r"front position $Z/a$")
     ax.set_xlim(0, 2.6)
     ax.set_ylim(0.9, tank_limit + 0.4)
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=2, frameon=False)
     save(fig, "dam_front.pdf")
 
 
@@ -249,10 +243,12 @@ def fig_sweep_stiffness():
 def fig_sweep_viscosity():
     sw = read_csv("sweep_visc.csv")
     nu = sw["value"]
+    assert len(nu) <= len(CATEGORICAL), "more sweep values than categorical colours"
+    colours = CATEGORICAL[:len(nu)]
     fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 2.4))
 
     ax = axes[0]
-    for colour, value in zip(ORDINAL, nu):
+    for colour, value in zip(colours, nu):
         series = read_csv(f"sweep_hydro_visc_{value_label(value)}.csv")
         ax.semilogy(series["t"], series["mean_kinetic_energy"], color=colour,
                     label=rf"$\nu = {value_label(value)}$")
@@ -260,24 +256,23 @@ def fig_sweep_viscosity():
     ax.set_ylabel(r"mean $\frac{1}{2}|\boldsymbol{v}|^2$ [px$^2$/s$^2$]")
     ax.set_xlim(0, series["t"].max())
     ax.set_title("(a) hydrostatic column", loc="left")
-    ax.legend(loc="upper left", ncol=2)
-    ax.set_ylim(None, ax.get_ylim()[1] * 8)
 
     ax = axes[1]
-    for colour, value in zip(ORDINAL, nu):
+    for colour, value in zip(colours, nu):
         front = read_csv(f"sweep_front_visc_{value_label(value)}.csv")
         ax.plot(front["T"], front["Z_over_a"], color=colour, label=rf"$\nu = {value_label(value)}$")
     ax.set_xlabel(r"$T = t\sqrt{g/a}$")
     ax.set_ylabel(r"front position $Z/a$")
     ax.set_xlim(0, 2.4)
     ax.set_title("(b) dam-break front", loc="left")
-    ax.legend(loc="upper left")
     fig.tight_layout(w_pad=1.5)
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=7,
+               frameon=False, handlelength=1.2, columnspacing=1.0)
     save(fig, "sweep_viscosity.pdf")
 
 
 def fig_boundary():
-    """Mirrored vs. zero boundary pressure, and residual wall motion with mirroring."""
     fig = plt.figure(figsize=(TEXT_WIDTH, 3.6))
     grid = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], wspace=0.3, hspace=0.6)
 
@@ -304,7 +299,6 @@ def fig_boundary():
     drift_speed = np.hypot(drift["drift_vx"], drift["drift_vy"])
     sc = ax.scatter(drift["x"], drift["y"], s=1.6, c=drift_speed, cmap=SEQUENTIAL,
                     norm=plt.Normalize(0, 12), linewidths=0, rasterized=True)
-    # Bin-averaged drift as arrows (30 px cells).
     cell = 30.0
     ix = np.floor(drift["x"] / cell).astype(int)
     iy = np.floor(drift["y"] / cell).astype(int)

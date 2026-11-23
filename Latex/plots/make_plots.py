@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Turn the CSV output of `sph_experiments` into the paper's figures.
-
-Usage (from the repository root):
-    ./build/sph_experiments Latex/data
-    python3 Latex/plots/make_plots.py [data_dir] [figure_dir]
-
-Defaults: data_dir = Latex/data, figure_dir = Latex/figures.
-
-Colour roles (validated with the dataviz palette checks):
-  * categorical  - blue / orange / aqua for simulation / reference / analytic,
-  * ordinal      - one-hue blue ramp for ordered sweep values,
-  * sequential   - blue ramp for pressure,
-  * diverging    - blue <-> grey <-> red for the density error (red = compressed).
-"""
-
 import csv
 import sys
 from pathlib import Path
@@ -21,15 +6,14 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data"
 FIGURES = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "figures"
 
-# --- palette -----------------------------------------------------------------
 INK = "#0b0b0b"
 INK_SECONDARY = "#52514e"
 GRID = "#e4e3df"
@@ -38,7 +22,7 @@ SURFACE = "#ffffff"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 RED = "#e34948"
 NEUTRAL = "#f0efec"
-# Categorical slots 1-7 in fixed order (validated: CVD and normal-vision checks pass).
+
 CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6"]
 ORDINAL = ["#c3dbf8", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
 SEQUENTIAL = LinearSegmentedColormap.from_list(
@@ -71,9 +55,8 @@ plt.rcParams.update({
 })
 
 
-# --- data helpers ---------------------------------------------------------------
+
 def read_csv(name):
-    """Read a numeric CSV into a dict of numpy arrays (non-numeric columns kept as str)."""
     path = DATA / name
     with path.open() as f:
         rows = [r for r in csv.reader(line for line in f if not line.startswith("#"))]
@@ -108,7 +91,6 @@ def save(fig, name):
 
 
 def draw_particles(ax, snap, values, cmap, norm, size=3.0):
-    """Scatter fluid particles coloured by `values`; walls in neutral grey."""
     wall = snap["fixed"] > 0.5
     ax.scatter(snap["x"][wall], snap["y"][wall], s=size, c=WALL, linewidths=0, rasterized=True)
     sc = ax.scatter(snap["x"][~wall], snap["y"][~wall], s=size, c=values[~wall],
@@ -122,7 +104,6 @@ def draw_particles(ax, snap, values, cmap, norm, size=3.0):
     return sc
 
 
-# --- figures -------------------------------------------------------------------
 def fig_hydro_pressure(meta):
     m = meta["hydro"]
     H = m["fluid_height"]
@@ -262,7 +243,6 @@ def fig_sweep_stiffness():
 def fig_sweep_viscosity():
     sw = read_csv("sweep_visc.csv")
     nu = sw["value"]
-    # One distinct categorical colour per viscosity value.
     assert len(nu) <= len(CATEGORICAL), "more sweep values than categorical colours"
     colours = CATEGORICAL[:len(nu)]
     fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 2.4))
@@ -286,7 +266,6 @@ def fig_sweep_viscosity():
     ax.set_xlim(0, 2.4)
     ax.set_title("(b) dam-break front", loc="left")
     fig.tight_layout(w_pad=1.5)
-    # One shared legend below both panels (same colours in both).
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=7,
                frameon=False, handlelength=1.2, columnspacing=1.0)
@@ -294,7 +273,6 @@ def fig_sweep_viscosity():
 
 
 def fig_boundary():
-    """Mirrored vs. zero boundary pressure, and residual wall motion with mirroring."""
     fig = plt.figure(figsize=(TEXT_WIDTH, 3.6))
     grid = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], wspace=0.3, hspace=0.6)
 
@@ -321,7 +299,6 @@ def fig_boundary():
     drift_speed = np.hypot(drift["drift_vx"], drift["drift_vy"])
     sc = ax.scatter(drift["x"], drift["y"], s=1.6, c=drift_speed, cmap=SEQUENTIAL,
                     norm=plt.Normalize(0, 12), linewidths=0, rasterized=True)
-    # Bin-averaged drift as arrows (30 px cells).
     cell = 30.0
     ix = np.floor(drift["x"] / cell).astype(int)
     iy = np.floor(drift["y"] / cell).astype(int)
