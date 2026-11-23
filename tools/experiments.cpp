@@ -72,7 +72,6 @@ struct Simulation
     double xFromLeftWall(const Particle &p) const { return p.position.x - scene.tank.left; }
     double rho0() const { return scene.parameters.restDensity; }
     double gravity() const { return scene.parameters.gravity; }
-    // Hydrostatic pressure scale at the bottom of the initial fluid body.
     double pressureScale() const { return rho0() * gravity() * scene.fluidHeight; }
 };
 
@@ -235,8 +234,7 @@ void runHydrostatic()
     }
     writeSnapshot(sim, "hydro_snapshot.csv");
 
-    // Residual motion of the "settled" column: mean drift velocity over the
-    // averaging window (displacement / time, y pointing up) and the speed.
+
     const double driftTime = sim.time - settleTime;
     std::ofstream drift = openCsv("hydro_drift.csv", "x,y,drift_vx,drift_vy,speed");
     for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
@@ -252,7 +250,6 @@ void runHydrostatic()
     log("E1 hydrostatic column done");
 }
 
-// E2: dam break with the default setup.
 void runDamBreak()
 {
     Simulation sim(makeDamBreakScene(windowWidth, windowHeight));
@@ -291,21 +288,18 @@ void runDamBreak()
     log("E2 dam break done");
 }
 
-// Results of one sweep configuration.
 struct SweepResult
 {
     std::string parameter;
     double value = 0.0;
-    // dam break
-    double damMaxDensityError = 0.0;  // max over the run
-    double damMeanMaxDensityError = 0.0; // time average of the per-frame max
+    double damMaxDensityError = 0.0;
+    double damMeanMaxDensityError = 0.0;
     double damSubstepsPerFrame = 0.0;
     double damFrontAtT15 = 0.0;
-    // hydrostatic column (after settling)
     double hydroMaxDensityError = 0.0;
-    double hydroPressureDeviation = 0.0;        // mean |p - rho0 g d| / (rho0 g H), instantaneous
-    double hydroAveragedPressureDeviation = 0.0; // same for 1 s time-averaged pressure
-    double hydroFrameToFrameChange = 0.0;      // mean |p(t) - p(t - frame)| / (rho0 g H)
+    double hydroPressureDeviation = 0.0;
+    double hydroAveragedPressureDeviation = 0.0;
+    double hydroFrameToFrameChange = 0.0;
     double hydroMeanNeighbors = 0.0;
 };
 
@@ -314,9 +308,6 @@ std::string sweepTag(const std::string &parameter, double value)
     return parameter + "_" + formatValue(value);
 }
 
-// E3/E4: one point of a parameter sweep. Runs a short dam break and a
-// hydrostatic column and writes the density snapshots used for the
-// small-multiples figure and the layer histogram for the pairing study.
 SweepResult runSweepPoint(const std::string &parameter, double value, const SceneOptions &options)
 {
     SweepResult result;
@@ -324,7 +315,6 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
     result.value = value;
     const std::string tag = sweepTag(parameter, value);
 
-    // --- dam break up to T = 3 ---
     {
         Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
         const double a = sim.scene.fluidWidth;
@@ -356,7 +346,6 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
         result.damSubstepsPerFrame = static_cast<double>(sim.substeps) / sim.frames;
     }
 
-    // --- hydrostatic column: settle 5 s, then measure for 2 s ---
     {
         Simulation sim(makeHydrostaticScene(windowWidth, windowHeight, options));
         const double settleTime = 5.0;
@@ -382,8 +371,6 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
         for (std::size_t i = 0; i < n; ++i)
             previous[i] = sim.scene.particles[i].pressure;
 
-        // Height histogram above the floor (1 px bins) in the central region,
-        // away from the side walls: reveals layering / pairing.
         const int histogramBins = 80;
         std::vector<double> histogram(histogramBins, 0.0);
         const double margin = 4.0 * sim.solver.getParticleSpacing();
@@ -468,7 +455,34 @@ void writeSweep(const std::string &name, const std::vector<SweepResult> &results
     }
 }
 
-// Run jobs on all hardware threads.
+// Cost of the solver: wall-clock time per 1/60 s frame of the dam break for
+// several particle spacings (single thread, no rendering).
+void runPerformance()
+{
+    std::ofstream file = openCsv("performance.csv",
+                                 "spacing,fluid_particles,total_particles,ms_per_frame,substeps_per_frame");
+    for (double spacing : {20.0, 14.0, 10.0, 7.0, 5.0})
+    {
+        SceneOptions options;
+        options.particleSpacing = spacing;
+        Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
+        int fluid = 0;
+        for (const Particle &p : sim.scene.particles)
+            fluid += p.fixed ? 0 : 1;
+        for (int i = 0; i < 10; ++i)
+            sim.advanceFrame();
+        const long substepsBefore = sim.substeps;
+        const int frames = 30;
+        const auto start = std::chrono::steady_clock::now();
+        for (int i = 0; i < frames; ++i)
+            sim.advanceFrame();
+        const double ms = 1000.0 * std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() / frames;
+        file << spacing << ',' << fluid << ',' << sim.scene.particles.size() << ',' << ms << ','
+             << static_cast<double>(sim.substeps - substepsBefore) / frames << '\n';
+        log("performance spacing " + formatValue(spacing) + " done");
+    }
+}
+
 void runParallel(std::vector<std::function<void()>> &jobs)
 {
     std::atomic<std::size_t> next{0};
@@ -484,7 +498,7 @@ void runParallel(std::vector<std::function<void()>> &jobs)
     for (std::thread &thread : threads)
         thread.join();
 }
-} // namespace
+} 
 
 int main(int argc, char **argv)
 {
@@ -492,24 +506,19 @@ int main(int argc, char **argv)
     std::filesystem::create_directories(outputDirectory);
     std::printf("Writing experiment data to %s\n", outputDirectory.c_str());
 
-    // Stiffness k = scale * k_ref; scales 1/16 ... 4 correspond to pressure-wave
-    // speeds of 2.5, 5, 10 and 20 times the free-fall speed.
     const std::vector<double> stiffnessScales = {0.0625, 0.25, 1.0, 4.0};
-    // Mirrored wall pressure needs nu >= ~600 to stay stable; 300 shows the instability.
-    const std::vector<double> viscosities = {300.0, 600.0, 1000.0, 2000.0};
-    const std::vector<double> kernelRatios = {1.2, 1.3, 1.6, 2.0};
+    const std::vector<double> viscosities = {150.0, 300.0, 600.0, 1000.0, 2000.0};
+    const std::vector<double> kernelRatios = {1.0, 1.2, 1.3, 1.6, 2.0};
 
     std::vector<SweepResult> kResults(stiffnessScales.size());
     std::vector<SweepResult> viscResults(viscosities.size());
     std::vector<SweepResult> ratioResults(kernelRatios.size());
-    // Boundary pressure: 0 = p_ib = 0, 1 = mirrored p_ib = p_i (default).
     std::vector<SweepResult> mirrorResults(2);
 
     std::vector<std::function<void()>> jobs;
     jobs.push_back(writeSceneMeta);
     jobs.push_back(runHydrostatic);
     jobs.push_back(runDamBreak);
-    // Most expensive jobs first so the thread pool finishes evenly.
     for (std::size_t i = 0; i < kernelRatios.size(); ++i)
     {
         jobs.push_back([&, i]()
@@ -550,6 +559,9 @@ int main(int argc, char **argv)
     writeSweep("sweep_visc.csv", viscResults);
     writeSweep("sweep_hdx.csv", ratioResults);
     writeSweep("sweep_mirror.csv", mirrorResults);
+
+    // Timed separately so that the other jobs do not compete for the CPU.
+    runPerformance();
 
     const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     std::printf("All experiments finished in %.0f s\n", elapsed);

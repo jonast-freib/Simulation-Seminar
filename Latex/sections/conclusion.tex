@@ -1,7 +1,8 @@
+\newpage
 \section{Conclusion}
 
 This project provides a small and inspectable two-dimensional SPH solver that
-follows the state-equation scheme of the course notes, with a stiff state
+follows the state-equation scheme, with a stiff state
 equation, mirrored boundary pressures, adaptive time stepping, an interactive
 visualisation, and a reproducible experiment pipeline.
 
@@ -11,16 +12,18 @@ density within about $0.7\,\%$ of the rest density and reproduces the
 hydrostatic pressure to within a few percent when averaged over time. The dam
 break stays below $3\,\%$ density error until the water hits the opposite wall.
 
-The parameter studies show that the stiffness coefficient trades
-compressibility against cost and pressure noise, and that the smoothing length
-should stay close to $1.3$ particle spacings, because larger values trigger the
-pairing instability. Mirroring the pressure to the boundary samples removes the
+The parameter studies show that the stiffness coefficient balances
+compressibility against computational cost and pressure noise, and that ratios $h/\Delta x$
+between $1.0$ and $1.3$ work well. $1.0$ gives the quietest column, $1.3$ needs
+$22\,\%$ fewer substeps, and above $1.6$ the particle arrangement degrades
+until the pairing instability appears at $2.0$. Mirroring the pressure to the boundary particles removes the
 gap between the wall and the first fluid layers, but it feeds energy into the
-fluid: a viscosity of at least $\nu = 600$ is needed to keep the fluid stable,
-which slows the flow, and slow eddies remain along the walls.
+fluid. The smallest tested viscosity that keeps the fluid stable is
+$\nu = 600$, which slows the flow, and slow residual motion remains along the walls.
 
 Future work could extrapolate the boundary pressure instead of mirroring it,
 replace the all-pairs neighbour search by a uniform grid to reach higher
 resolutions, reduce the pressure noise with an iterative or implicit pressure
-solver (PCISPH, IISPH, DFSPH), and compare the dam-break front quantitatively
-with the measurements of Martin and Moyce.
+solver (PCISPH \cite{solenthaler2009}, IISPH \cite{ihmsen2014iisph},
+DFSPH \cite{bender2015}), and compare the dam-break front quantitatively
+with experimental measurements.

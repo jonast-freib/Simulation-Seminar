@@ -11,11 +11,8 @@ public:
     void handleEvents();
     void clear();
     void drawParticles(const std::vector<Particle>& particles);
-    // Pressure mapped to the top of the colour scale (0 maps to the bottom).
     void setReferencePressure(double pressure);
-    // Forget the time-averaged pressures (call when the particle set is replaced).
     void resetColorSmoothing();
-    // Toggle between pressure colouring and a plain colour for fluid particles.
     void setColorByPressure(bool enabled);
     bool isColorByPressure() const;
     void display();

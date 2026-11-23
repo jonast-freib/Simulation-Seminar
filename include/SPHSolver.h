@@ -6,15 +6,9 @@
 
 class SPHSolver {
 public:
-	// Default ratio of smoothing length to initial particle spacing, h / dx.
-	// The cubic spline suffers from the pairing instability (particles clump
-	// into rows) when h / dx is too large; 1.3 gives ~20 neighbours in 2D.
+
 	static constexpr double defaultKernelSpacingRatio = 1.3;
 
-	// stiffness: stiffness coefficient k of the state equation
-	// p_i = k ((rho_i / rho_0)^7 - 1). Larger k -> less compressible fluid,
-	// smaller time step. Density errors stay ~1% when the pressure-wave speed
-	// sqrt(7 k / rho_0) is >= 10 * the maximum flow speed.
 	SPHSolver(double smoothingRadius = 30.0,
 			  double restDensity = 300.0,
 			  double stiffness = 1.0e6,
@@ -27,34 +21,22 @@ public:
 	void setSmoothingRadius(double h);
 	void setGravity(const Vector2D& g);
 	void setKernelSpacingRatio(double ratio);
-	// Boundary pressure in the pressure acceleration: mirrored from the fluid
-	// particle (p_ib = p_i, course notes; default) or zero (p_ib = 0).
 	void setBoundaryPressureMirroring(bool enabled);
 
 	double getParticleMass() const;
-	// Speed of pressure waves at rest density, sqrt(dp/drho) = sqrt(7 k / rho_0).
-	// Used by the CFL condition and for Mach-number diagnostics.
 	double getPressureWaveSpeed() const;
 	double getRestDensity() const;
 
-	// Initial particle spacing dx = h / (h/dx) that the particle mass is calibrated for.
 	double getParticleSpacing() const;
 
-	// Number of neighbours (within the 2h kernel support) of a particle in the last step.
 	std::size_t getNeighborCount(std::size_t particleIndex) const;
 
-	// Advance the simulation state by exactly one step of size dt.
 	void step(std::vector<Particle>& particles, double dt);
 
-	// Advance the simulation by `duration`, splitting it into as many
-	// substeps as the stability limits (CFL, force, viscosity) require.
-	// Returns the number of substeps taken.
 	int advance(std::vector<Particle>& particles, double duration);
 
-	// Size of the most recent substep and the stability limit it was taken from.
 	double getLastTimeStep() const;
 
-	// State equation (weakly compressible SPH): p = max(k ((rho / rho_0)^7 - 1), 0).
 	double pressureFromDensity(double density) const;
 
 private:

@@ -15,8 +15,6 @@ static void expect(bool condition, const char *message)
     }
 }
 
-// The state equation p = k ((rho / rho0)^7 - 1) must give dp/drho = 7 k / rho0
-// at rest density, i.e. pressure waves travel at sqrt(7 k / rho0).
 static void testStateEquationStiffness()
 {
     const double k = 1.0e6;
@@ -29,8 +27,6 @@ static void testStateEquationStiffness()
     expect(solver.pressureFromDensity(0.9 * rho0) == 0.0, "negative pressure is clamped");
 }
 
-// Run the hydrostatic column and check density error, containment, the
-// adaptive timestep and the hydrostatic pressure profile p = rho0 * g * depth.
 static void testHydrostaticColumn()
 {
     Scene scene = makeHydrostaticScene(1700.0, 900.0);
@@ -65,7 +61,6 @@ static void testHydrostaticColumn()
                "fluid stays inside the tank");
         maxDensityError = std::max(maxDensityError, p.density / params.restDensity - 1.0);
 
-        // Compare pressure away from the walls and the free surface.
         const double depth = bottom - p.position.y;
         const double fromSide = std::min(p.position.x - tank.left, tank.left + tank.width - p.position.x);
         if (depth > 2.0 * params.smoothingRadius && fromSide > 2.0 * params.smoothingRadius &&

@@ -1,22 +1,16 @@
 \begin{thebibliography}{1}
 
-\bibitem{band2018iisph}
-Stefan Band, Christoph Gissler, Markus Ihmsen, Jens Cornelis, Andreas Peer, and
-  Matthias Teschner.
-\newblock Pressure boundaries for implicit incompressible {SPH}.
-\newblock {\em ACM Transactions on Graphics}, 37(2), 2018.
-
-\bibitem{band2018mls}
-Stefan Band, Christoph Gissler, Andreas Peer, and Matthias Teschner.
-\newblock {MLS} pressure boundaries for divergence-free and viscous {SPH}
-  fluids.
-\newblock {\em Computers \& Graphics}, 76:37--46, 2018.
-
 \bibitem{becker2007}
 Markus Becker and Matthias Teschner.
 \newblock Weakly compressible {SPH} for free surface flows.
 \newblock In {\em Proceedings of the 2007 ACM SIGGRAPH/Eurographics Symposium
   on Computer Animation}, pages 209--217, 2007.
+
+\bibitem{bender2015}
+Jan Bender and Dan Koschier.
+\newblock Divergence-free smoothed particle hydrodynamics.
+\newblock In {\em Proceedings of the 14th ACM SIGGRAPH/Eurographics Symposium
+  on Computer Animation}, pages 147--155, 2015.
 
 \bibitem{dehnen2012}
 Walter Dehnen and Hossam Aly.
@@ -25,22 +19,21 @@ Walter Dehnen and Hossam Aly.
 \newblock {\em Monthly Notices of the Royal Astronomical Society},
   425(2):1068--1082, 2012.
 
-\bibitem{lucy1977}
-Leon~B. Lucy.
-\newblock A numerical approach to the testing of the fission hypothesis.
-\newblock {\em The Astronomical Journal}, 82:1013--1024, 1977.
-
-\bibitem{martin1952}
-J.~C. Martin and W.~J. Moyce.
-\newblock Part {IV}. an experimental study of the collapse of liquid columns on
-  a rigid horizontal plane.
-\newblock {\em Philosophical Transactions of the Royal Society of London.
-  Series A}, 244(882):312--324, 1952.
+\bibitem{ihmsen2014iisph}
+Markus Ihmsen et~al.
+\newblock Implicit incompressible {SPH}.
+\newblock {\em IEEE Transactions on Visualization and Computer Graphics},
+  20(3):426--435, 2014.
 
 \bibitem{monaghan1992}
 Joseph~J. Monaghan.
 \newblock Smoothed particle hydrodynamics.
 \newblock {\em Annual Review of Astronomy and Astrophysics}, 30:543--574, 1992.
+
+\bibitem{morris1997}
+Joseph~P. Morris, Patrick~J. Fox, and Yi~Zhu.
+\newblock Modeling low {R}eynolds number incompressible flows using {SPH}.
+\newblock {\em Journal of Computational Physics}, 136(1):214--226, 1997.
 
 \bibitem{ritter1892}
 A.~Ritter.
@@ -48,10 +41,15 @@ A.~Ritter.
 \newblock {\em Zeitschrift des Vereines Deutscher Ingenieure}, 36:947--954,
   1892.
 
+\bibitem{solenthaler2009}
+Barbara Solenthaler.
+\newblock Predictive-corrective incompressible {SPH}.
+\newblock {\em ACM Transactions on Graphics}, 28, 2009.
+
 \bibitem{teschner_notes}
 Matthias Teschner.
 \newblock Simulation in computer graphics -- particle fluids.
-\newblock Course notes, University of Freiburg,
+\newblock lecture notes, University of Freiburg,
   \url{https://cg.informatik.uni-freiburg.de/course_notes/sim_03_particleFluids.pdf}.
 
 \end{thebibliography}

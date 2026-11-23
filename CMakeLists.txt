@@ -9,6 +9,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+# Reproducible floating point: the simulation is chaotic, so fused multiply-add
+# (e.g. from -march=native) changes the paper's data. Do not add -march=native.
+add_compile_options(-ffp-contract=off)
+
 # Find SFML
 find_package(SFML 3 COMPONENTS Graphics REQUIRED)
 

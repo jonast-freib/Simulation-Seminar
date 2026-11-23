@@ -1,5 +1,5 @@
 \documentclass[11pt,a4paper]{article}
-
+\usepackage[section]{placeins}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
@@ -10,8 +10,21 @@
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{titlesec}
 
-\geometry{margin=2.8cm}
+% Larger section titles (article defaults: \Large, \large, \normalsize).
+\titleformat*{\section}{\LARGE\bfseries}
+\titleformat*{\subsection}{\Large\bfseries}
+\titleformat*{\subsubsection}{\large\bfseries}
+
+% Allow larger and more floats at the top of a page.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+
+
+\geometry{vmargin=3.2cm, hmargin=3.2cm}
 \hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
 \lstset{basicstyle=\ttfamily\small, frame=single, breaklines=true}
 
@@ -46,10 +59,16 @@ This seminar paper documents the design and evaluation of a small two-dimensiona
 smoothed particle hydrodynamics (SPH) solver. The fluid is modelled as weakly compressible
 with a stiff state equation, the time step adapts to the Courant–Friedrichs–Lewy (CFL) condition, force, and viscous
 stability limits, and walls are simulated as static boundary particles with
-mirrored pressure. The solver is evaluated on a hydrostatic column simulation and a dam
+mirrored pressure. The solver is evaluated on a hydrostatic column and a dam
 break. Parameter studies quantify how the stiffness coefficient, the viscosity,
 and the ratio of smoothing length to particle spacing affect compressibility,
-pressure noise, cost, and particle ordering. The solver is implemented in C++17 and uses SFML for visualisation.
+pressure noise, cost, and particle ordering. With the stiffness chosen so that
+pressure waves are ten times faster than the free-fall speed, the settled column
+stays within $0.7\,\%$ of the rest density and matches the hydrostatic pressure
+to within $3\,\%$ when averaged over time, and the dam break stays below
+$3\,\%$ density error until the wall impact. The mirrored boundary pressure
+requires a viscosity of $\nu = 600\,\mathrm{px^2/s}$ for stability and is the
+main source of pressure noise. The solver is implemented in C++17 and uses SFML for visualisation.
 \end{abstract}
 \vspace*{\fill}
 \newpage

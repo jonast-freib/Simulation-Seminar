@@ -38,12 +38,12 @@ SURFACE = "#ffffff"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 RED = "#e34948"
 NEUTRAL = "#f0efec"
-ORDINAL = ["#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
+ORDINAL = ["#c3dbf8", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
 SEQUENTIAL = LinearSegmentedColormap.from_list(
     "seq_blue", ["#9ec5f4", "#6da7ec", "#3987e5", "#1c5cab", "#0d366b"])
 DIVERGING = LinearSegmentedColormap.from_list("div_blue_red", [BLUE, NEUTRAL, RED])
 
-TEXT_WIDTH = 6.0  # inches, matches the A4 / 2.8 cm margin layout
+TEXT_WIDTH = 5.7  # inches, matches the A4 / 3.2 cm side margin layout
 
 plt.rcParams.update({
     "font.size": 9,
@@ -158,17 +158,6 @@ def fig_hydro_settling():
     save(fig, "hydro_settling.pdf")
 
 
-def martin_moyce():
-    """Experimental reference, if the user has filled in the template."""
-    path = DATA / "martin_moyce_n2.csv"
-    if not path.exists():
-        return None
-    data = read_csv("martin_moyce_n2.csv")
-    if len(data.get("T", [])) == 0:
-        return None
-    return data
-
-
 def fig_dam_front(meta):
     m = meta["dam"]
     n = np.sqrt(m["fluid_height"] / m["fluid_width"])
@@ -177,22 +166,17 @@ def fig_dam_front(meta):
     reach = front["T"] <= front["T"][np.argmax(front["Z_over_a"] >= tank_limit - 0.02)] + 0.05
 
     fig, ax = plt.subplots(figsize=(TEXT_WIDTH * 0.55, 2.8))
-    ax.plot(front["T"][reach], front["Z_over_a"][reach], color=BLUE, label="SPH (this work)")
+    ax.plot(front["T"][reach], front["Z_over_a"][reach], color=BLUE, label="SPH")
     T = np.linspace(0, 1.2, 50)
     ax.plot(T, 1 + 2 * n * T, color=AQUA, linestyle=":", linewidth=1.8,
-            label=r"shallow water, $Z/a = 1 + 2nT$")
-    mm = martin_moyce()
-    if mm is not None:
-        ax.plot(mm["T"], mm["Z_over_a"], linestyle="none", marker="o", markersize=4.5,
-                markerfacecolor=ORANGE, markeredgecolor=SURFACE, markeredgewidth=0.8,
-                label=r"Martin \& Moyce (1952), $n^2 = 2$")
+            label=r"Ritter, $Z/a = 1 + 2nT$")
     ax.axhline(tank_limit, color=INK_SECONDARY, linewidth=0.8)
     ax.text(0.05, tank_limit + 0.05, "far wall", color=INK_SECONDARY, fontsize=8, va="bottom")
     ax.set_xlabel(r"$T = t\sqrt{g/a}$")
     ax.set_ylabel(r"front position $Z/a$")
     ax.set_xlim(0, 2.6)
     ax.set_ylim(0.9, tank_limit + 0.4)
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=2, frameon=False)
     save(fig, "dam_front.pdf")
 
 
@@ -351,10 +335,10 @@ def fig_boundary():
 
 
 def fig_pairing():
-    ratios = [1.2, 1.3, 1.6, 2.0]
+    ratios = [1.0, 1.2, 1.3, 1.6, 2.0]
     sweep = read_csv("sweep_hdx.csv")
     neighbours = dict(zip(sweep["value"], sweep["hydro_mean_neighbors"]))
-    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.9))
+    fig, axes = plt.subplots(1, len(ratios), figsize=(TEXT_WIDTH, 1.9))
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-0.02, vmax=0.02)
     sc = None
     for ax, ratio in zip(axes, ratios):
@@ -363,7 +347,7 @@ def fig_pairing():
         snap = {k: v[window] for k, v in snap.items()}
         sc = draw_particles(ax, snap, snap["density_error"], DIVERGING, norm, size=5)
         n = neighbours.get(ratio, float("nan"))
-        ax.set_title(rf"$h/\Delta x = {value_label(ratio)}$" + f"\n({n:.0f} neighbours)", fontsize=8)
+        ax.set_title(rf"$h/\Delta x = {value_label(ratio)}$" + f"\n({n:.0f})", fontsize=8)
     cbar = fig.colorbar(sc, ax=list(axes), shrink=0.8, pad=0.02, extend="both")
     cbar.set_label(r"$\rho/\rho_0 - 1$")
     cbar.ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(xmax=1, decimals=0))
@@ -374,10 +358,14 @@ def fig_pairing():
 def fig_density_grid():
     studies = [
         ("k", [0.0625, 0.25, 1, 4], lambda v: rf"$k = {stiffness_label(v)}\,k_\mathrm{{ref}}$"),
-        ("visc", [300, 600, 1000, 2000], lambda v: rf"$\nu = {value_label(v)}$"),
-        ("hdx", [1.2, 1.3, 1.6, 2.0], lambda v: rf"$h/\Delta x = {value_label(v)}$"),
+        ("visc", [150, 300, 600, 1000, 2000], lambda v: rf"$\nu = {value_label(v)}$"),
+        ("hdx", [1.0, 1.2, 1.3, 1.6, 2.0], lambda v: rf"$h/\Delta x = {value_label(v)}$"),
     ]
-    fig, axes = plt.subplots(3, 4, figsize=(TEXT_WIDTH, 2.9))
+    columns = max(len(values) for _, values, _ in studies)
+    fig, axes = plt.subplots(3, columns, figsize=(TEXT_WIDTH, 2.6))
+    for row, (_, values, _) in enumerate(studies):
+        for col in range(len(values), columns):
+            axes[row, col].axis("off")
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-0.03, vmax=0.03)
     sc = None
     for row, (param, values, label) in enumerate(studies):

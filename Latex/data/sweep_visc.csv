@@ -1,4 +1,5 @@
 parameter,value,dam_max_density_error,dam_mean_max_density_error,dam_substeps_per_frame,dam_front_T1.5,hydro_max_density_error,hydro_pressure_deviation,hydro_averaged_pressure_deviation,hydro_frame_to_frame_change,hydro_mean_neighbors
+visc,150,0.139126,0.0340325,15.1,2.91375,0.173664,0.940071,0.281542,1.15269,16.7084
 visc,300,0.111046,0.0282695,15.0056,2.69908,0.128058,0.802291,0.151943,1.0255,18.4114
 visc,600,0.102672,0.0193766,14.7444,2.59509,0.00980223,0.118889,0.0291849,0.141163,19.7099
 visc,1000,0.151217,0.0172477,14.5389,2.56716,0.0106428,0.166696,0.0267124,0.162245,19.8547

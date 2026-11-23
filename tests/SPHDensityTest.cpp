@@ -1,4 +1,3 @@
-// Keep assert() active in optimised (NDEBUG) builds.
 #undef NDEBUG
 #include <cassert>
 #include <cmath>

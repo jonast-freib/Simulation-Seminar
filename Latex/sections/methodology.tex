@@ -1,8 +1,7 @@
 \section{Methodology}
 
-The solver follows the state-equation SPH (SESPH) scheme of the course notes
-\cite{teschner_notes}; the notation below is that of the notes. Where the
-implementation deviates from them, this is stated explicitly.
+The solver follows the state-equation SPH (SESPH) scheme of the lecture notes
+\cite{teschner_notes}. Deviations from the lecture notes are stated explicitly.
 
 \subsection{SPH Approximation}
 
@@ -13,8 +12,8 @@ For a quantity $A$ at particle $i$, the SPH approximation is
 \end{equation}
 where $m_j$ is the particle mass, $\rho_j$ the density, $\boldsymbol{x}_j$ the
 position, $h$ the smoothing length, and $W$ a kernel with compact support
-\cite{teschner_notes}. We use the two-dimensional cubic spline with
-support $2h$,
+\cite{teschner_notes}. The two-dimensional cubic spline with
+support $2h$ is used.
 \begin{equation}
     W(q) = \alpha
     \begin{cases}
@@ -25,34 +24,39 @@ support $2h$,
     \qquad q = \frac{\lVert \boldsymbol{x}_j - \boldsymbol{x}_i \rVert}{h},
     \qquad \alpha = \frac{5}{14\pi h^2}.
 \end{equation}
-
-Particles are initialised on a square lattice with spacing $\Delta x$ and carry
-the mass $m_i = \rho_0 \Delta x^2$. In the course notes the particle spacing
-equals $h$ ($m_i = \rho_0 h^d$). Here $h = 1.3\,\Delta x$ is used instead, which
-gives about 20 neighbours per particle in 2D (about 12 for $h = \Delta x$).
+Particles are initialised on a square grid with spacing $\Delta x$ and
+the mass $m_i = \rho_0 \Delta x^2$. In the lecture notes the particle spacing
+equals $h$ ($m_i = \rho_0 h^d$). Here $h = 1.3\,\Delta x$ is used instead. On the
+initial square grid, a particle then has 20 neighbours within the support
+$2h$ (fluid and boundary particles, not counting itself), compared with 8 for
+$h = \Delta x$. In the settled hydrostatic column the mean counts are 20 and 12.
+For $h = \Delta x$ the four grid particles at a distance of exactly
+$2\Delta x = 2h$ lie on the edge of the support and enter it as soon as the
+fluid is slightly compressed or the particles leave the grid.
 Larger ratios make the cubic spline prone to the pairing instability
 \cite{dehnen2012}, which is examined in Section~\ref{sec:pairing}.
 
 \subsection{Density and State Equation}
 
-The density is computed by summation over all neighbours, including the
-particle itself and the boundary samples (Section~\ref{sec:boundary}),
+The density is computed by summation over all neighbouring particles, including the
+particle itself and the boundary particles (Section~\ref{sec:boundary}),
 \begin{equation}
     \rho_i = \sum_{i_f} m_{i_f} W_{i i_f} + \sum_{i_b} m_{i_b} W_{i i_b},
 \end{equation}
 where $i_f$ denotes the fluid and $i_b$ the boundary neighbours of $i$. The
-pressure follows the state equation of weakly compressible SPH
-\cite{teschner_notes,becker2007},
+pressure follows the Tait-type state equation of weakly compressible SPH
+\cite{becker2007},
 \begin{equation}
     p_i = \max\left(k\left(\left(\frac{\rho_i}{\rho_0}\right)^7 - 1\right), 0\right),
     \label{eq:state}
 \end{equation}
-with the rest density $\rho_0$ and the stiffness coefficient $k$. As the course
-notes put it, $k$ does not govern the pressure but the compressibility of the
-fluid: a larger $k$ means less compression and a smaller time step. Pressure
+with the rest density $\rho_0$ and the stiffness coefficient $k$. The exponent 7
+makes the fluid seven times stiffer near $\rho_0$ for the same $k$. The
+stiffness coefficient $k$ does not set the pressure, but the compressibility. A larger $k$ means less compression 
+and allows for a smaller time step. Pressure
 waves travel at $\sqrt{\mathrm{d}p/\mathrm{d}\rho} = \sqrt{7k/\rho_0}$, and the
 relative density error scales with $(v/\sqrt{7k/\rho_0})^2$ for a flow speed $v$.
-We therefore choose $k$ such that pressure waves are ten times faster than the
+Therefore $k$ was chosen such that pressure waves are ten times faster than the
 fastest expected flow, estimated by free fall from the top of the fluid body of
 height $H$:
 \begin{equation}
@@ -62,7 +66,7 @@ which targets density errors of about one percent.
 
 \subsection{Accelerations}
 
-Following the course notes, the acceleration is split into a pressure part and
+The acceleration is split into a pressure part and
 a non-pressure part,
 \begin{align}
     \boldsymbol{a}_i^\mathrm{nonp} &= \nu \nabla^2 \boldsymbol{v}_i + \boldsymbol{g},
@@ -78,20 +82,20 @@ with $\boldsymbol{x}_{ij} = \boldsymbol{x}_i - \boldsymbol{x}_j$,
 $\boldsymbol{v}_{ij} = \boldsymbol{v}_i - \boldsymbol{v}_j$, the dimensionality
 $d = 2$, and the kinematic viscosity $\nu$ \cite{teschner_notes}. The Laplacian is
 approximated with the first kernel derivative because the second derivative is
-sensitive to particle disorder. Besides modelling friction, the viscosity damps
+sensitive to particle disorder \cite{morris1997}. Besides modelling friction, the viscosity dampens
 the acoustic oscillations that a weakly compressible fluid carries.
 
 \subsection{Boundary Handling}
 \label{sec:boundary}
 
-Walls are represented by static boundary samples placed on the same lattice as
+Walls are represented by static boundary particles placed on the same grid as
 the fluid and with the same mass. Several layers are used, so that a fluid
 particle at the wall has a completely filled kernel support
-($\lceil 2h/\Delta x \rceil = 3$ layers for $h = 1.3\Delta x$); the boundary
-samples then enter the density sum like fluid at rest density.
+($\lceil 2h/\Delta x \rceil = 3$ layers for $h = 1.3\Delta x$). The boundary
+samples then enter the density sum like a fluid at rest density.
 
-The pressure acceleration requires a pressure at the boundary samples. Following
-the course notes, pressure and density are mirrored from the fluid particle,
+The pressure acceleration calculation requires a pressure at the boundary particles. 
+Pressure and density are mirrored from the fluid particle,
 $p_{i_b} = p_i$ and $\rho_{i_b} = \rho_i$, so that the boundary term becomes
 \begin{equation}
     \boldsymbol{a}_i^\mathrm{p} = -\sum_{i_f} m_{i_f}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_f}}{\rho_{i_f}^2}\right)\nabla W_{i i_f}
@@ -100,35 +104,30 @@ $p_{i_b} = p_i$ and $\rho_{i_b} = \rho_i$, so that the boundary term becomes
 \end{equation}
 Mirroring gives a fluid particle at the wall the full pressure support, so the
 first fluid layer carries the hydrostatic load without excess compression. It
-is, however, not energy-consistent: the boundary samples enter $\rho_i$ once but
-the pressure acceleration twice. In our stiff setting this feeds energy into the
-fluid near walls; with $\nu = 150$ a resting column did not come to rest but
-reached particle speeds of up to about $1500\,\mathrm{px/s}$, independently of
-the time step. A viscosity of $\nu = 600$ removes this energy faster than it is fed in
+is, however, not energy-consistent: the boundary particles enter $\rho_i$ once but
+the pressure acceleration twice. In this setting, energy is fed into the
+fluid near walls because the boundary particles contribute to the pressure acceleration twice.
+ With $\nu = 150$ a column initialised at rest did not settle but
+reached particle speeds of up to about $1250\,\mathrm{px/s}$
+(Section~\ref{sec:viscosity}). A viscosity of $\nu = 600$ removes this energy faster than it is fed in
 and is therefore used as the default (Section~\ref{sec:viscosity}). A residual
-motion along the walls remains, which is a known artefact of mirrored boundary
-pressures \cite{band2018mls,band2018iisph}.
+motion along the walls remains (Section~\ref{sec:boundary-results}).
 
-As a safety net against penetration during violent impacts, a fluid particle
-that comes closer than $\Delta x/2$ to a boundary sample is projected back to
+As a safety precaution against penetration during violent impacts, a fluid particle
+that comes closer than $\Delta x/2$ to a boundary particel is projected back to
 that distance and its normal velocity is reflected with a restitution of $0.5$.
-This projection is not part of the course notes; fluid at rest sits a full
-spacing away from the wall, so it does not act in quiescent regions.
+
 
 \subsection{Time Integration}
 Velocities and positions are updated with the semi-implicit (symplectic) Euler
-scheme of the course notes,
+scheme,
 \begin{equation}
     \boldsymbol{v}_i(t+\Delta t) = \boldsymbol{v}_i(t) + \Delta t\,\boldsymbol{a}_i(t),
     \qquad
     \boldsymbol{x}_i(t+\Delta t) = \boldsymbol{x}_i(t) + \Delta t\,\boldsymbol{v}_i(t+\Delta t).
 \end{equation}
-The course notes bound the time step by the CFL condition
-$\Delta t \le \lambda\, h / \lVert \boldsymbol{v}^\mathrm{max} \rVert$. In a weakly
-compressible fluid, information also travels with the pressure waves, so their
-speed is added to the particle speed. Together with a force and a viscous
-condition \cite{monaghan1992}, the time step is chosen adaptively in every
-substep as
+The time step is chosen adaptively in every substep as the minimum of three
+conditions,
 \begin{equation}
     \Delta t = \min\left(
         \lambda\,\frac{h}{\sqrt{7k/\rho_0} + \lVert \boldsymbol{v}^\mathrm{max}\rVert},\;
@@ -137,16 +136,33 @@ substep as
     \right),
     \qquad \lambda = 0.4.
 \end{equation}
-Each rendered frame advances the simulation by $1/60\,\mathrm{s}$, split into as
-many substeps as these limits require. For the stiffness used here the first
-condition dominates.
+The first is a CFL condition. In a weakly compressible fluid, information
+travels not only with the particles but also with the pressure waves, so their
+speed $\sqrt{7k/\rho_0}$ is added to the maximum particle speed. This keeps the
+step bounded by $\lambda h/\sqrt{7k/\rho_0}$ even for a fluid at rest, as in the
+hydrostatic test. The second limits the step by the largest particle acceleration
+\cite{monaghan1992,morris1997}. The third is the stability condition of
+explicit schemes for diffusion, applied to the viscous term, it becomes the
+dominant constraint at high resolution or large viscosity \cite{morris1997}. Each rendered frame advances the simulation by
+$1/60\,\mathrm{s}$, split into as many substeps as these limits require.
+
+For the stiffness coefficient used here the CFL condition dominates. Since $k_\mathrm{ref}$
+makes the pressure waves about ten times faster than the flow, the signal speed
+$\sqrt{7k/\rho_0} + \lVert \boldsymbol{v}^\mathrm{max}\rVert$ is roughly
+$11\lVert \boldsymbol{v}^\mathrm{max}\rVert$, which gives
+\begin{equation*}
+    \Delta t \approx \frac{0.4 \cdot 1.3\,\Delta x}{11\lVert \boldsymbol{v}^\mathrm{max}\rVert}
+    \approx 0.05\,\frac{\Delta x}{\lVert \boldsymbol{v}^\mathrm{max}\rVert}.
+\end{equation*}
+This means that
+a particle moves at most about $5\,\%$ of the particle spacing per substep.
 
 \subsection{Neighbour Search}
 
 Neighbour lists are rebuilt once per substep by testing all particle pairs
-against the kernel support $2h$. In contrast to the uniform grid or compact
-hashing of the course notes, this costs $\mathcal{O}(N^2)$; it is adequate for
-the scene sizes used here (about $1.6\times10^3$ particles) but is the main
+against the kernel support $2h$. This costs $\mathcal{O}(N^2)$ and it is adequate for
+the scene sizes used here (about $1.6\times10^3$ particles, about
+$20\,\mathrm{ms}$ per frame on one CPU core) but is the main
 limitation for larger scenes.
 
 \subsection{Software Structure}
@@ -167,23 +183,10 @@ interactive graphics window. A headless program (\texttt{sph\_experiments})
 runs all experiments of Section~\ref{sec:results} and writes their data as CSV
 files, from which the figures are generated.
 
+\newpage
 \subsection{Experimental Setup}
 
-All quantities are given in screen units (pixels and seconds). Results are
-reported in dimensionless form ($p/\rho_0 g H$, $Z/a$, $T = t\sqrt{g/a}$), so the
-choice of units does not affect them. Two scenes are used
-(Table~\ref{tab:setup}):
-\begin{itemize}
-    \item \textbf{Hydrostatic column.} An open tank of width $300\,\mathrm{px}$ is
-          filled to $H = 400\,\mathrm{px}$ with fluid at rest. The column has to
-          settle to the hydrostatic pressure $p = \rho_0 g d$ at depth $d$.
-    \item \textbf{Dam break.} A fluid column of width $a = 200\,\mathrm{px}$ and
-          height $H = 400\,\mathrm{px}$ (aspect ratio $n^2 = H/a = 2$) stands in
-          the lower-left corner of a closed tank of width $800\,\mathrm{px}$ and
-          collapses under gravity at $t = 0$ \cite{martin1952}.
-\end{itemize}
-
-\begin{table}[ht]
+\begin{table}[tp]
     \centering
     \caption{Default parameters of both scenes. Parameter studies vary one
     quantity at a time.}
@@ -206,3 +209,17 @@ choice of units does not affect them. Two scenes are used
         \bottomrule
     \end{tabular}
 \end{table}
+
+All quantities are given in screen units (pixels and seconds). Pressures,
+front positions and times are reported in dimensionless form ($p/\rho_0 g H$,
+$Z/a$, $T = t\sqrt{g/a}$). Two scenes are used
+(Table~\ref{tab:setup}):
+\begin{itemize}
+    \item \textbf{Hydrostatic column.} An open tank of width $300\,\mathrm{px}$ is
+          filled to $H = 400\,\mathrm{px}$ with fluid at rest. The column has to
+          settle to the hydrostatic pressure $p = \rho_0 g d$ at depth $d$.
+    \item \textbf{Dam break.} A fluid column of width $a = 200\,\mathrm{px}$ and
+          height $H = 400\,\mathrm{px}$ (aspect ratio $n^2 = H/a = 2$) stands in
+          the lower-left corner of a closed tank of width $800\,\mathrm{px}$ and
+          collapses under gravity at $t = 0$.
+\end{itemize}

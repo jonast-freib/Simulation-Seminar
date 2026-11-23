@@ -1,12 +1,12 @@
 \section{Introduction}
 
-Particle-based methods are useful for simulating interactive fluid dynamics. 
+Particle-based methods are well suited for interactive fluid simulation. 
 Smoothed particle hydrodynamics represents a fluid by a
 set of free particles and approximates field quantities using a smoothing
 kernel.
 
-The goal of this lab course is to implement and analyze a compact two-dimensional
-SPH solver following the state-equation SPH (SESPH). The fluid is treated as weakly compressible, so the
+The goal of this project is to implement and analyse a compact two-dimensional
+SPH solver based on state-equation SPH (SESPH). The fluid is treated as weakly compressible, so the
  pressure follows a state equation with
 stiffness coefficient $k$, the time step adapts to the Courant–Friedrichs–Lewy (CFL) condition, and solid
 walls are made of static boundary particles whose pressure is mirrored from the
@@ -20,10 +20,10 @@ solver on a hydrostatic column and a dam break.
 The evaluation focuses on three questions:
 \begin{enumerate}
     \item How accurately does the solver reproduce a known solution
-    (hydrostatic pressure) and a classical experiment (dam break,
-    \cite{martin1952}), and how large is the density error?
+    (hydrostatic pressure) and a reference solution for the dam break, and how large is the density error?
     \item How do the numerical parameters (stiffness coefficient, viscosity,
     and the ratio of smoothing length to particle spacing) affect compressibility,
-    pressure noise, cost, and the flow itself?
-    \item Which artefacts limit the method, and where do they come from?
+    pressure noise and cost?
+    \item What are the limitations of the method?
 \end{enumerate}
+\newpage
