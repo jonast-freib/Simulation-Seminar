@@ -4,7 +4,8 @@
 
 using Vector2D = sf::Vector2<double>;
 
-struct Particle {
+struct Particle
+{
     Vector2D position;
     Vector2D velocity;
     Vector2D acceleration;
@@ -12,7 +13,7 @@ struct Particle {
     double density;
     double pressure;
     bool fixed;
-
+    // Constructor with default values for position, mass, and fixed status
     Particle(Vector2D pos = Vector2D(), double m = 2.5, bool fixedParticle = false)
         : position(pos), velocity(0, 0), acceleration(0, 0),
           mass(m), density(0.0), pressure(0.0), fixed(fixedParticle) {}

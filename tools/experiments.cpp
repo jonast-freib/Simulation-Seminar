@@ -18,492 +18,489 @@
 
 namespace
 {
-constexpr double windowWidth = 1700.0;
-constexpr double windowHeight = 900.0;
-constexpr double frameTime = 1.0 / 60.0;
+    constexpr double windowWidth = 1700.0;
+    constexpr double windowHeight = 900.0;
+    constexpr double frameTime = 1.0 / 60.0;
 
-std::filesystem::path outputDirectory;
-std::mutex logMutex;
+    std::filesystem::path outputDirectory;
+    std::mutex logMutex;
 
-void log(const std::string &message)
-{
-    std::lock_guard<std::mutex> lock(logMutex);
-    std::printf("%s\n", message.c_str());
-    std::fflush(stdout);
-}
-
-std::ofstream openCsv(const std::string &name, const std::string &header)
-{
-    std::ofstream file(outputDirectory / name);
-    file << header << '\n';
-    return file;
-}
-
-std::string formatValue(double value)
-{
-    std::ostringstream stream;
-    stream << value;
-    return stream.str();
-}
-
-struct Simulation
-{
-    Scene scene;
-    SPHSolver solver;
-    double time = 0.0;
-    long substeps = 0;
-    long frames = 0;
-
-    explicit Simulation(Scene s) : scene(std::move(s))
+    void log(const std::string &message)
     {
-        applySceneParameters(solver, scene.parameters);
-        solver.step(scene.particles, 0.0);
+        std::lock_guard<std::mutex> lock(logMutex);
+        std::printf("%s\n", message.c_str());
+        std::fflush(stdout);
     }
 
-    void advanceFrame()
+    std::ofstream openCsv(const std::string &name, const std::string &header)
     {
-        substeps += solver.advance(scene.particles, frameTime);
-        ++frames;
-        time += frameTime;
+        std::ofstream file(outputDirectory / name);
+        file << header << '\n';
+        return file;
     }
 
-    double floorY() const { return scene.tank.top + scene.tank.height; }
-    double heightAboveFloor(const Particle &p) const { return floorY() - p.position.y; }
-    double xFromLeftWall(const Particle &p) const { return p.position.x - scene.tank.left; }
-    double rho0() const { return scene.parameters.restDensity; }
-    double gravity() const { return scene.parameters.gravity; }
-    double pressureScale() const { return rho0() * gravity() * scene.fluidHeight; }
-};
-
-struct DensityStats
-{
-    double maxError = 0.0;  // max (rho / rho0 - 1) over fluid particles
-    double meanError = 0.0; // mean (rho / rho0 - 1)
-    double meanKinetic = 0.0;
-    double maxSpeed = 0.0;
-};
-
-DensityStats densityStats(const Simulation &sim)
-{
-    DensityStats stats;
-    int count = 0;
-    for (const Particle &p : sim.scene.particles)
+    std::string formatValue(double value)
     {
-        if (p.fixed)
-            continue;
-        const double error = p.density / sim.rho0() - 1.0;
-        const double speed2 = p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y;
-        stats.maxError = std::max(stats.maxError, error);
-        stats.meanError += error;
-        stats.meanKinetic += 0.5 * speed2;
-        stats.maxSpeed = std::max(stats.maxSpeed, std::sqrt(speed2));
-        ++count;
+        std::ostringstream stream;
+        stream << value;
+        return stream.str();
     }
-    if (count > 0)
+
+    struct Simulation
     {
-        stats.meanError /= count;
-        stats.meanKinetic /= count;
-    }
-    return stats;
-}
+        Scene scene;
+        SPHSolver solver;
+        double time = 0.0;
+        long substeps = 0;
+        long frames = 0;
 
-
-double damFront(const Simulation &sim)
-{
-    const double dx = sim.solver.getParticleSpacing();
-    double front = 0.0;
-    for (const Particle &p : sim.scene.particles)
-    {
-        if (p.fixed || sim.heightAboveFloor(p) > 3.0 * dx)
-            continue;
-        front = std::max(front, sim.xFromLeftWall(p) + 0.5 * dx);
-    }
-    return front;
-}
-
-void writeSnapshot(const Simulation &sim, const std::string &name,
-                   const std::vector<double> *smoothedPressure = nullptr)
-{
-    std::ofstream file = openCsv(name, "x,y,fixed,density_error,pressure,pressure_smoothed,speed");
-    for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
-    {
-        const Particle &p = sim.scene.particles[i];
-        const double smoothed = smoothedPressure ? (*smoothedPressure)[i] : p.pressure;
-        file << sim.xFromLeftWall(p) << ',' << sim.heightAboveFloor(p) << ',' << (p.fixed ? 1 : 0) << ','
-             << (p.fixed ? 0.0 : p.density / sim.rho0() - 1.0) << ',' << p.pressure << ',' << smoothed << ','
-             << std::hypot(p.velocity.x, p.velocity.y) << '\n';
-    }
-}
-
-
-void updateSmoothedPressure(const Simulation &sim, std::vector<double> &smoothed, double tau)
-{
-    const double blend = 1.0 - std::exp(-frameTime / tau);
-    if (smoothed.size() != sim.scene.particles.size())
-    {
-        smoothed.clear();
-        for (const Particle &p : sim.scene.particles)
-            smoothed.push_back(p.pressure);
-        return;
-    }
-    for (std::size_t i = 0; i < smoothed.size(); ++i)
-        smoothed[i] += blend * (sim.scene.particles[i].pressure - smoothed[i]);
-}
-
-void writeSceneMeta()
-{
-    std::ofstream file = openCsv("scene_meta.csv", "scene,key,value");
-    for (int which = 0; which < 2; ++which)
-    {
-        const Scene scene = which == 0 ? makeDamBreakScene(windowWidth, windowHeight)
-                                       : makeHydrostaticScene(windowWidth, windowHeight);
-        const std::string name = which == 0 ? "dam" : "hydro";
-        int fluid = 0;
-        int wall = 0;
-        for (const Particle &p : scene.particles)
-            (p.fixed ? wall : fluid)++;
-        const SceneParameters &q = scene.parameters;
-        const std::vector<std::pair<std::string, double>> rows = {
-            {"tank_width", scene.tank.width},
-            {"tank_height", scene.tank.height},
-            {"closed_top", scene.tank.closedTop ? 1.0 : 0.0},
-            {"fluid_width", scene.fluidWidth},
-            {"fluid_height", scene.fluidHeight},
-            {"particle_spacing", q.smoothingRadius / q.kernelSpacingRatio},
-            {"smoothing_length", q.smoothingRadius},
-            {"kernel_spacing_ratio", q.kernelSpacingRatio},
-            {"rest_density", q.restDensity},
-            {"stiffness", q.stiffness},
-            {"pressure_wave_speed", std::sqrt(7.0 * q.stiffness / q.restDensity)},
-            {"viscosity", q.viscosity},
-            {"gravity", q.gravity},
-            {"fluid_particles", static_cast<double>(fluid)},
-            {"wall_particles", static_cast<double>(wall)},
-        };
-        for (const auto &[key, value] : rows)
-            file << name << ',' << key << ',' << value << '\n';
-    }
-}
-
-void runHydrostatic()
-{
-    Simulation sim(makeHydrostaticScene(windowWidth, windowHeight));
-    std::ofstream series = openCsv("hydro_timeseries.csv",
-                                   "t,max_density_error,mean_density_error,mean_kinetic_energy,max_speed,substeps,dt");
-
-    const double settleTime = 8.0;
-    const double averageTime = 2.0;
-    std::vector<double> pressureSum(sim.scene.particles.size(), 0.0);
-    std::vector<double> heightSum(sim.scene.particles.size(), 0.0);
-    std::vector<Vector2D> positionAtSettle(sim.scene.particles.size());
-    int averagedFrames = 0;
-
-    while (sim.time < settleTime + averageTime - 1e-9)
-    {
-        const long before = sim.substeps;
-        sim.advanceFrame();
-        const DensityStats stats = densityStats(sim);
-        series << sim.time << ',' << stats.maxError << ',' << stats.meanError << ',' << stats.meanKinetic << ','
-               << stats.maxSpeed << ',' << (sim.substeps - before) << ',' << sim.solver.getLastTimeStep() << '\n';
-
-        if (averagedFrames == 0 && sim.time > settleTime)
+        explicit Simulation(Scene s) : scene(std::move(s))
         {
-            for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
-                positionAtSettle[i] = sim.scene.particles[i].position;
+            applySceneParameters(solver, scene.parameters);
+            solver.step(scene.particles, 0.0);
         }
-        if (sim.time > settleTime)
+
+        void advanceFrame()
         {
-            for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
-            {
-                pressureSum[i] += sim.scene.particles[i].pressure;
-                heightSum[i] += sim.heightAboveFloor(sim.scene.particles[i]);
-            }
-            ++averagedFrames;
+            substeps += solver.advance(scene.particles, frameTime);
+            ++frames;
+            time += frameTime;
         }
-    }
-    
-    std::ofstream profile = openCsv("hydro_profile.csv", "x,depth,pressure,pressure_time_averaged,hydrostatic");
-    for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
-    {
-        const Particle &p = sim.scene.particles[i];
-        if (p.fixed)
-            continue;
-        const double depth = sim.scene.fluidHeight - heightSum[i] / averagedFrames;
-        profile << sim.xFromLeftWall(p) << ',' << depth << ',' << p.pressure << ','
-                << pressureSum[i] / averagedFrames << ',' << sim.rho0() * sim.gravity() * depth << '\n';
-    }
-    writeSnapshot(sim, "hydro_snapshot.csv");
 
-
-    const double driftTime = sim.time - settleTime;
-    std::ofstream drift = openCsv("hydro_drift.csv", "x,y,drift_vx,drift_vy,speed");
-    for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
-    {
-        const Particle &p = sim.scene.particles[i];
-        if (p.fixed)
-            continue;
-        const Vector2D displacement = p.position - positionAtSettle[i];
-        drift << sim.xFromLeftWall(p) << ',' << sim.heightAboveFloor(p) << ','
-              << displacement.x / driftTime << ',' << -displacement.y / driftTime << ','
-              << std::hypot(p.velocity.x, p.velocity.y) << '\n';
-    }
-    log("E1 hydrostatic column done");
-}
-
-void runDamBreak()
-{
-    Simulation sim(makeDamBreakScene(windowWidth, windowHeight));
-    const double a = sim.scene.fluidWidth;
-    const double timeScale = std::sqrt(sim.gravity() / a); // T = t * sqrt(g / a)
-    std::ofstream front = openCsv("dam_front.csv", "t,T,Z_over_a,max_density_error,mach");
-
-    const std::vector<double> snapshotTimes = {0.0, 1.0, 2.0, 3.0, 5.0};
-    std::size_t nextSnapshot = 0;
-    std::vector<double> smoothed;
-    const double endTime = 6.0 / timeScale;
-
-    auto record = [&]()
-    {
-        const DensityStats stats = densityStats(sim);
-        const double T = sim.time * timeScale;
-        front << sim.time << ',' << T << ',' << damFront(sim) / a << ',' << stats.maxError << ','
-              << stats.maxSpeed / sim.solver.getPressureWaveSpeed() << '\n';
-        if (nextSnapshot < snapshotTimes.size() && T >= snapshotTimes[nextSnapshot] - 1e-9)
-        {
-            char name[64];
-            std::snprintf(name, sizeof(name), "dam_snapshot_T%.0f.csv", snapshotTimes[nextSnapshot]);
-            writeSnapshot(sim, name, &smoothed);
-            ++nextSnapshot;
-        }
+        double floorY() const { return scene.tank.top + scene.tank.height; }
+        double heightAboveFloor(const Particle &p) const { return floorY() - p.position.y; }
+        double xFromLeftWall(const Particle &p) const { return p.position.x - scene.tank.left; }
+        double rho0() const { return scene.parameters.restDensity; }
+        double gravity() const { return scene.parameters.gravity; }
+        double pressureScale() const { return rho0() * gravity() * scene.fluidHeight; }
     };
 
-    updateSmoothedPressure(sim, smoothed, 0.05);
-    record();
-    while (sim.time < endTime - 1e-9)
+    struct DensityStats
     {
-        sim.advanceFrame();
+        double maxError = 0.0;  // max (rho / rho0 - 1) over fluid particles
+        double meanError = 0.0; // mean (rho / rho0 - 1)
+        double meanKinetic = 0.0;
+        double maxSpeed = 0.0;
+    };
+
+    DensityStats densityStats(const Simulation &sim)
+    {
+        DensityStats stats;
+        int count = 0;
+        for (const Particle &p : sim.scene.particles)
+        {
+            if (p.fixed)
+                continue;
+            const double error = p.density / sim.rho0() - 1.0;
+            const double speed2 = p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y;
+            stats.maxError = std::max(stats.maxError, error);
+            stats.meanError += error;
+            stats.meanKinetic += 0.5 * speed2;
+            stats.maxSpeed = std::max(stats.maxSpeed, std::sqrt(speed2));
+            ++count;
+        }
+        if (count > 0)
+        {
+            stats.meanError /= count;
+            stats.meanKinetic /= count;
+        }
+        return stats;
+    }
+
+    double damFront(const Simulation &sim)
+    {
+        const double dx = sim.solver.getParticleSpacing();
+        double front = 0.0;
+        for (const Particle &p : sim.scene.particles)
+        {
+            if (p.fixed || sim.heightAboveFloor(p) > 3.0 * dx)
+                continue;
+            front = std::max(front, sim.xFromLeftWall(p) + 0.5 * dx);
+        }
+        return front;
+    }
+
+    void writeSnapshot(const Simulation &sim, const std::string &name,
+                       const std::vector<double> *smoothedPressure = nullptr)
+    {
+        std::ofstream file = openCsv(name, "x,y,fixed,density_error,pressure,pressure_smoothed,speed");
+        for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+        {
+            const Particle &p = sim.scene.particles[i];
+            const double smoothed = smoothedPressure ? (*smoothedPressure)[i] : p.pressure;
+            file << sim.xFromLeftWall(p) << ',' << sim.heightAboveFloor(p) << ',' << (p.fixed ? 1 : 0) << ','
+                 << (p.fixed ? 0.0 : p.density / sim.rho0() - 1.0) << ',' << p.pressure << ',' << smoothed << ','
+                 << std::hypot(p.velocity.x, p.velocity.y) << '\n';
+        }
+    }
+
+    void updateSmoothedPressure(const Simulation &sim, std::vector<double> &smoothed, double tau)
+    {
+        const double blend = 1.0 - std::exp(-frameTime / tau);
+        if (smoothed.size() != sim.scene.particles.size())
+        {
+            smoothed.clear();
+            for (const Particle &p : sim.scene.particles)
+                smoothed.push_back(p.pressure);
+            return;
+        }
+        for (std::size_t i = 0; i < smoothed.size(); ++i)
+            smoothed[i] += blend * (sim.scene.particles[i].pressure - smoothed[i]);
+    }
+
+    void writeSceneMeta()
+    {
+        std::ofstream file = openCsv("scene_meta.csv", "scene,key,value");
+        for (int which = 0; which < 2; ++which)
+        {
+            const Scene scene = which == 0 ? makeDamBreakScene(windowWidth, windowHeight)
+                                           : makeHydrostaticScene(windowWidth, windowHeight);
+            const std::string name = which == 0 ? "dam" : "hydro";
+            int fluid = 0;
+            int wall = 0;
+            for (const Particle &p : scene.particles)
+                (p.fixed ? wall : fluid)++;
+            const SceneParameters &q = scene.parameters;
+            const std::vector<std::pair<std::string, double>> rows = {
+                {"tank_width", scene.tank.width},
+                {"tank_height", scene.tank.height},
+                {"closed_top", scene.tank.closedTop ? 1.0 : 0.0},
+                {"fluid_width", scene.fluidWidth},
+                {"fluid_height", scene.fluidHeight},
+                {"particle_spacing", q.smoothingRadius / q.kernelSpacingRatio},
+                {"smoothing_length", q.smoothingRadius},
+                {"kernel_spacing_ratio", q.kernelSpacingRatio},
+                {"rest_density", q.restDensity},
+                {"stiffness", q.stiffness},
+                {"pressure_wave_speed", std::sqrt(7.0 * q.stiffness / q.restDensity)},
+                {"viscosity", q.viscosity},
+                {"gravity", q.gravity},
+                {"fluid_particles", static_cast<double>(fluid)},
+                {"wall_particles", static_cast<double>(wall)},
+            };
+            for (const auto &[key, value] : rows)
+                file << name << ',' << key << ',' << value << '\n';
+        }
+    }
+
+    void runHydrostatic()
+    {
+        Simulation sim(makeHydrostaticScene(windowWidth, windowHeight));
+        std::ofstream series = openCsv("hydro_timeseries.csv",
+                                       "t,max_density_error,mean_density_error,mean_kinetic_energy,max_speed,substeps,dt");
+
+        const double settleTime = 8.0;
+        const double averageTime = 2.0;
+        std::vector<double> pressureSum(sim.scene.particles.size(), 0.0);
+        std::vector<double> heightSum(sim.scene.particles.size(), 0.0);
+        std::vector<Vector2D> positionAtSettle(sim.scene.particles.size());
+        int averagedFrames = 0;
+
+        while (sim.time < settleTime + averageTime - 1e-9)
+        {
+            const long before = sim.substeps;
+            sim.advanceFrame();
+            const DensityStats stats = densityStats(sim);
+            series << sim.time << ',' << stats.maxError << ',' << stats.meanError << ',' << stats.meanKinetic << ','
+                   << stats.maxSpeed << ',' << (sim.substeps - before) << ',' << sim.solver.getLastTimeStep() << '\n';
+
+            if (averagedFrames == 0 && sim.time > settleTime)
+            {
+                for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+                    positionAtSettle[i] = sim.scene.particles[i].position;
+            }
+            if (sim.time > settleTime)
+            {
+                for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+                {
+                    pressureSum[i] += sim.scene.particles[i].pressure;
+                    heightSum[i] += sim.heightAboveFloor(sim.scene.particles[i]);
+                }
+                ++averagedFrames;
+            }
+        }
+
+        std::ofstream profile = openCsv("hydro_profile.csv", "x,depth,pressure,pressure_time_averaged,hydrostatic");
+        for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+        {
+            const Particle &p = sim.scene.particles[i];
+            if (p.fixed)
+                continue;
+            const double depth = sim.scene.fluidHeight - heightSum[i] / averagedFrames;
+            profile << sim.xFromLeftWall(p) << ',' << depth << ',' << p.pressure << ','
+                    << pressureSum[i] / averagedFrames << ',' << sim.rho0() * sim.gravity() * depth << '\n';
+        }
+        writeSnapshot(sim, "hydro_snapshot.csv");
+
+        const double driftTime = sim.time - settleTime;
+        std::ofstream drift = openCsv("hydro_drift.csv", "x,y,drift_vx,drift_vy,speed");
+        for (std::size_t i = 0; i < sim.scene.particles.size(); ++i)
+        {
+            const Particle &p = sim.scene.particles[i];
+            if (p.fixed)
+                continue;
+            const Vector2D displacement = p.position - positionAtSettle[i];
+            drift << sim.xFromLeftWall(p) << ',' << sim.heightAboveFloor(p) << ','
+                  << displacement.x / driftTime << ',' << -displacement.y / driftTime << ','
+                  << std::hypot(p.velocity.x, p.velocity.y) << '\n';
+        }
+        log("E1 hydrostatic column done");
+    }
+
+    void runDamBreak()
+    {
+        Simulation sim(makeDamBreakScene(windowWidth, windowHeight));
+        const double a = sim.scene.fluidWidth;
+        const double timeScale = std::sqrt(sim.gravity() / a); // T = t * sqrt(g / a)
+        std::ofstream front = openCsv("dam_front.csv", "t,T,Z_over_a,max_density_error,mach");
+
+        const std::vector<double> snapshotTimes = {0.0, 1.0, 2.0, 3.0, 5.0};
+        std::size_t nextSnapshot = 0;
+        std::vector<double> smoothed;
+        const double endTime = 6.0 / timeScale;
+
+        auto record = [&]()
+        {
+            const DensityStats stats = densityStats(sim);
+            const double T = sim.time * timeScale;
+            front << sim.time << ',' << T << ',' << damFront(sim) / a << ',' << stats.maxError << ','
+                  << stats.maxSpeed / sim.solver.getPressureWaveSpeed() << '\n';
+            if (nextSnapshot < snapshotTimes.size() && T >= snapshotTimes[nextSnapshot] - 1e-9)
+            {
+                char name[64];
+                std::snprintf(name, sizeof(name), "dam_snapshot_T%.0f.csv", snapshotTimes[nextSnapshot]);
+                writeSnapshot(sim, name, &smoothed);
+                ++nextSnapshot;
+            }
+        };
+
         updateSmoothedPressure(sim, smoothed, 0.05);
         record();
-    }
-    log("E2 dam break done");
-}
-
-struct SweepResult
-{
-    std::string parameter;
-    double value = 0.0;
-    double damMaxDensityError = 0.0;
-    double damMeanMaxDensityError = 0.0;
-    double damSubstepsPerFrame = 0.0;
-    double damFrontAtT15 = 0.0;
-    double hydroMaxDensityError = 0.0;
-    double hydroPressureDeviation = 0.0;
-    double hydroAveragedPressureDeviation = 0.0;
-    double hydroFrameToFrameChange = 0.0;
-    double hydroMeanNeighbors = 0.0;
-};
-
-std::string sweepTag(const std::string &parameter, double value)
-{
-    return parameter + "_" + formatValue(value);
-}
-
-SweepResult runSweepPoint(const std::string &parameter, double value, const SceneOptions &options)
-{
-    SweepResult result;
-    result.parameter = parameter;
-    result.value = value;
-    const std::string tag = sweepTag(parameter, value);
-
-    {
-        Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
-        const double a = sim.scene.fluidWidth;
-        const double timeScale = std::sqrt(sim.gravity() / a);
-        std::ofstream front = openCsv("sweep_front_" + tag + ".csv", "T,Z_over_a,max_density_error");
-        bool snapshotWritten = false;
-        bool frontRecorded = false;
-        double errorSum = 0.0;
-        while (sim.time * timeScale < 3.0 - 1e-9)
+        while (sim.time < endTime - 1e-9)
         {
             sim.advanceFrame();
-            const double T = sim.time * timeScale;
-            const DensityStats stats = densityStats(sim);
-            result.damMaxDensityError = std::max(result.damMaxDensityError, stats.maxError);
-            errorSum += stats.maxError;
-            front << T << ',' << damFront(sim) / a << ',' << stats.maxError << '\n';
-            if (!frontRecorded && T >= 1.5 - 1e-9)
-            {
-                result.damFrontAtT15 = damFront(sim) / a;
-                frontRecorded = true;
-            }
-            if (!snapshotWritten && T >= 2.0 - 1e-9)
-            {
-                writeSnapshot(sim, "density_dam_" + tag + ".csv");
-                snapshotWritten = true;
-            }
+            updateSmoothedPressure(sim, smoothed, 0.05);
+            record();
         }
-        result.damMeanMaxDensityError = errorSum / sim.frames;
-        result.damSubstepsPerFrame = static_cast<double>(sim.substeps) / sim.frames;
+        log("E2 dam break done");
     }
 
+    struct SweepResult
     {
-        Simulation sim(makeHydrostaticScene(windowWidth, windowHeight, options));
-        const double settleTime = 8.0; // same window as runHydrostatic (t = 8-10 s)
-        const double measureTime = 2.0;
-        std::ofstream series = openCsv("sweep_hydro_" + tag + ".csv",
-                                       "t,mean_kinetic_energy,max_density_error,max_speed");
-        auto recordSeries = [&]()
-        {
-            const DensityStats stats = densityStats(sim);
-            series << sim.time << ',' << stats.meanKinetic << ',' << stats.maxError << ','
-                   << stats.maxSpeed << '\n';
-        };
-        while (sim.time < settleTime - 1e-9)
-        {
-            sim.advanceFrame();
-            recordSeries();
-        }
+        std::string parameter;
+        double value = 0.0;
+        double damMaxDensityError = 0.0;
+        double damMeanMaxDensityError = 0.0;
+        double damSubstepsPerFrame = 0.0;
+        double damFrontAtT15 = 0.0;
+        double hydroMaxDensityError = 0.0;
+        double hydroPressureDeviation = 0.0;
+        double hydroAveragedPressureDeviation = 0.0;
+        double hydroFrameToFrameChange = 0.0;
+        double hydroMeanNeighbors = 0.0;
+    };
 
-        const std::size_t n = sim.scene.particles.size();
-        const double scale = sim.pressureScale();
-        const double surfaceHeight = sim.scene.fluidHeight;
-        std::vector<double> previous(n), pressureSum(n, 0.0), depthSum(n, 0.0);
-        for (std::size_t i = 0; i < n; ++i)
-            previous[i] = sim.scene.particles[i].pressure;
+    std::string sweepTag(const std::string &parameter, double value)
+    {
+        return parameter + "_" + formatValue(value);
+    }
 
-        const int histogramBins = 80;
-        std::vector<double> histogram(histogramBins, 0.0);
-        const double margin = 4.0 * sim.solver.getParticleSpacing();
+    SweepResult runSweepPoint(const std::string &parameter, double value, const SceneOptions &options)
+    {
+        SweepResult result;
+        result.parameter = parameter;
+        result.value = value;
+        const std::string tag = sweepTag(parameter, value);
 
-        double deviationSum = 0.0;
-        double changeSum = 0.0;
-        double neighborSum = 0.0;
-        long samples = 0;
-        int frames = 0;
-        while (sim.time < settleTime + measureTime - 1e-9)
         {
-            sim.advanceFrame();
-            recordSeries();
-            ++frames;
-            for (std::size_t i = 0; i < n; ++i)
+            Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
+            const double a = sim.scene.fluidWidth;
+            const double timeScale = std::sqrt(sim.gravity() / a);
+            std::ofstream front = openCsv("sweep_front_" + tag + ".csv", "T,Z_over_a,max_density_error");
+            bool snapshotWritten = false;
+            bool frontRecorded = false;
+            double errorSum = 0.0;
+            while (sim.time * timeScale < 3.0 - 1e-9)
             {
-                const Particle &p = sim.scene.particles[i];
-                if (p.fixed)
-                    continue;
-                const double depth = surfaceHeight - sim.heightAboveFloor(p);
-                deviationSum += std::abs(p.pressure - sim.rho0() * sim.gravity() * depth) / scale;
-                changeSum += std::abs(p.pressure - previous[i]) / scale;
-                neighborSum += static_cast<double>(sim.solver.getNeighborCount(i));
-                pressureSum[i] += p.pressure;
-                depthSum[i] += depth;
-                previous[i] = p.pressure;
-                ++samples;
-
-                const double x = sim.xFromLeftWall(p);
-                if (x > margin && x < sim.scene.tank.width - margin)
+                sim.advanceFrame();
+                const double T = sim.time * timeScale;
+                const DensityStats stats = densityStats(sim);
+                result.damMaxDensityError = std::max(result.damMaxDensityError, stats.maxError);
+                errorSum += stats.maxError;
+                front << T << ',' << damFront(sim) / a << ',' << stats.maxError << '\n';
+                if (!frontRecorded && T >= 1.5 - 1e-9)
                 {
-                    const int bin = static_cast<int>(sim.heightAboveFloor(p));
-                    if (bin >= 0 && bin < histogramBins)
-                        histogram[bin] += 1.0;
+                    result.damFrontAtT15 = damFront(sim) / a;
+                    frontRecorded = true;
+                }
+                if (!snapshotWritten && T >= 2.0 - 1e-9)
+                {
+                    writeSnapshot(sim, "density_dam_" + tag + ".csv");
+                    snapshotWritten = true;
                 }
             }
-            result.hydroMaxDensityError = std::max(result.hydroMaxDensityError, densityStats(sim).maxError);
+            result.damMeanMaxDensityError = errorSum / sim.frames;
+            result.damSubstepsPerFrame = static_cast<double>(sim.substeps) / sim.frames;
         }
 
-        // Time-averaged pressure per particle, in units of rho0 g H.
-        std::ofstream averagedProfile = openCsv("profile_hydro_" + tag + ".csv",
-                                                "x,height,pressure_time_averaged");
-        double averagedDeviation = 0.0;
-        int fluidCount = 0;
-        for (std::size_t i = 0; i < n; ++i)
         {
-            if (sim.scene.particles[i].fixed)
-                continue;
-            const double depth = depthSum[i] / frames;
-            averagedDeviation += std::abs(pressureSum[i] / frames - sim.rho0() * sim.gravity() * depth) / scale;
-            averagedProfile << sim.xFromLeftWall(sim.scene.particles[i]) << ',' << surfaceHeight - depth << ','
-                            << pressureSum[i] / frames / scale << '\n';
-            ++fluidCount;
+            Simulation sim(makeHydrostaticScene(windowWidth, windowHeight, options));
+            const double settleTime = 8.0; // same window as runHydrostatic (t = 8-10 s)
+            const double measureTime = 2.0;
+            std::ofstream series = openCsv("sweep_hydro_" + tag + ".csv",
+                                           "t,mean_kinetic_energy,max_density_error,max_speed");
+            auto recordSeries = [&]()
+            {
+                const DensityStats stats = densityStats(sim);
+                series << sim.time << ',' << stats.meanKinetic << ',' << stats.maxError << ','
+                       << stats.maxSpeed << '\n';
+            };
+            while (sim.time < settleTime - 1e-9)
+            {
+                sim.advanceFrame();
+                recordSeries();
+            }
+
+            const std::size_t n = sim.scene.particles.size();
+            const double scale = sim.pressureScale();
+            const double surfaceHeight = sim.scene.fluidHeight;
+            std::vector<double> previous(n), pressureSum(n, 0.0), depthSum(n, 0.0);
+            for (std::size_t i = 0; i < n; ++i)
+                previous[i] = sim.scene.particles[i].pressure;
+
+            const int histogramBins = 80;
+            std::vector<double> histogram(histogramBins, 0.0);
+            const double margin = 4.0 * sim.solver.getParticleSpacing();
+
+            double deviationSum = 0.0;
+            double changeSum = 0.0;
+            double neighborSum = 0.0;
+            long samples = 0;
+            int frames = 0;
+            while (sim.time < settleTime + measureTime - 1e-9)
+            {
+                sim.advanceFrame();
+                recordSeries();
+                ++frames;
+                for (std::size_t i = 0; i < n; ++i)
+                {
+                    const Particle &p = sim.scene.particles[i];
+                    if (p.fixed)
+                        continue;
+                    const double depth = surfaceHeight - sim.heightAboveFloor(p);
+                    deviationSum += std::abs(p.pressure - sim.rho0() * sim.gravity() * depth) / scale;
+                    changeSum += std::abs(p.pressure - previous[i]) / scale;
+                    neighborSum += static_cast<double>(sim.solver.getNeighborCount(i));
+                    pressureSum[i] += p.pressure;
+                    depthSum[i] += depth;
+                    previous[i] = p.pressure;
+                    ++samples;
+
+                    const double x = sim.xFromLeftWall(p);
+                    if (x > margin && x < sim.scene.tank.width - margin)
+                    {
+                        const int bin = static_cast<int>(sim.heightAboveFloor(p));
+                        if (bin >= 0 && bin < histogramBins)
+                            histogram[bin] += 1.0;
+                    }
+                }
+                result.hydroMaxDensityError = std::max(result.hydroMaxDensityError, densityStats(sim).maxError);
+            }
+
+            // Time-averaged pressure per particle, in units of rho0 g H.
+            std::ofstream averagedProfile = openCsv("profile_hydro_" + tag + ".csv",
+                                                    "x,height,pressure_time_averaged");
+            double averagedDeviation = 0.0;
+            int fluidCount = 0;
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                if (sim.scene.particles[i].fixed)
+                    continue;
+                const double depth = depthSum[i] / frames;
+                averagedDeviation += std::abs(pressureSum[i] / frames - sim.rho0() * sim.gravity() * depth) / scale;
+                averagedProfile << sim.xFromLeftWall(sim.scene.particles[i]) << ',' << surfaceHeight - depth << ','
+                                << pressureSum[i] / frames / scale << '\n';
+                ++fluidCount;
+            }
+            result.hydroPressureDeviation = deviationSum / samples;
+            result.hydroFrameToFrameChange = changeSum / samples;
+            result.hydroAveragedPressureDeviation = averagedDeviation / fluidCount;
+            result.hydroMeanNeighbors = neighborSum / samples;
+
+            std::ofstream layers = openCsv("layers_" + tag + ".csv", "height,count_fraction");
+            double total = 0.0;
+            for (double c : histogram)
+                total += c;
+            for (int b = 0; b < histogramBins; ++b)
+                layers << b + 0.5 << ',' << (total > 0.0 ? histogram[b] / total : 0.0) << '\n';
+            writeSnapshot(sim, "density_hydro_" + tag + ".csv");
         }
-        result.hydroPressureDeviation = deviationSum / samples;
-        result.hydroFrameToFrameChange = changeSum / samples;
-        result.hydroAveragedPressureDeviation = averagedDeviation / fluidCount;
-        result.hydroMeanNeighbors = neighborSum / samples;
 
-        std::ofstream layers = openCsv("layers_" + tag + ".csv", "height,count_fraction");
-        double total = 0.0;
-        for (double c : histogram)
-            total += c;
-        for (int b = 0; b < histogramBins; ++b)
-            layers << b + 0.5 << ',' << (total > 0.0 ? histogram[b] / total : 0.0) << '\n';
-        writeSnapshot(sim, "density_hydro_" + tag + ".csv");
+        log("sweep " + tag + " done");
+        return result;
     }
 
-    log("sweep " + tag + " done");
-    return result;
-}
-
-void writeSweep(const std::string &name, const std::vector<SweepResult> &results)
-{
-    std::ofstream file = openCsv(
-        name,
-        "parameter,value,dam_max_density_error,dam_mean_max_density_error,dam_substeps_per_frame,"
-        "dam_front_T1.5,hydro_max_density_error,hydro_pressure_deviation,"
-        "hydro_averaged_pressure_deviation,hydro_frame_to_frame_change,hydro_mean_neighbors");
-    for (const SweepResult &r : results)
+    void writeSweep(const std::string &name, const std::vector<SweepResult> &results)
     {
-        file << r.parameter << ',' << r.value << ',' << r.damMaxDensityError << ',' << r.damMeanMaxDensityError
-             << ',' << r.damSubstepsPerFrame << ',' << r.damFrontAtT15 << ','
-             << r.hydroMaxDensityError << ',' << r.hydroPressureDeviation << ','
-             << r.hydroAveragedPressureDeviation << ',' << r.hydroFrameToFrameChange << ','
-             << r.hydroMeanNeighbors << '\n';
+        std::ofstream file = openCsv(
+            name,
+            "parameter,value,dam_max_density_error,dam_mean_max_density_error,dam_substeps_per_frame,"
+            "dam_front_T1.5,hydro_max_density_error,hydro_pressure_deviation,"
+            "hydro_averaged_pressure_deviation,hydro_frame_to_frame_change,hydro_mean_neighbors");
+        for (const SweepResult &r : results)
+        {
+            file << r.parameter << ',' << r.value << ',' << r.damMaxDensityError << ',' << r.damMeanMaxDensityError
+                 << ',' << r.damSubstepsPerFrame << ',' << r.damFrontAtT15 << ','
+                 << r.hydroMaxDensityError << ',' << r.hydroPressureDeviation << ','
+                 << r.hydroAveragedPressureDeviation << ',' << r.hydroFrameToFrameChange << ','
+                 << r.hydroMeanNeighbors << '\n';
+        }
     }
-}
 
-// Cost of the solver: wall-clock time per 1/60 s frame of the dam break for
-// several particle spacings (single thread, no rendering).
-void runPerformance()
-{
-    std::ofstream file = openCsv("performance.csv",
-                                 "spacing,fluid_particles,total_particles,ms_per_frame,substeps_per_frame");
-    for (double spacing : {20.0, 14.0, 10.0, 7.0, 5.0})
+    // Cost of the solver: wall-clock time per 1/60 s frame of the dam break for
+    // several particle spacings (single thread, no rendering).
+    void runPerformance()
     {
-        SceneOptions options;
-        options.particleSpacing = spacing;
-        Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
-        int fluid = 0;
-        for (const Particle &p : sim.scene.particles)
-            fluid += p.fixed ? 0 : 1;
-        for (int i = 0; i < 10; ++i)
-            sim.advanceFrame();
-        const long substepsBefore = sim.substeps;
-        const int frames = 30;
-        const auto start = std::chrono::steady_clock::now();
-        for (int i = 0; i < frames; ++i)
-            sim.advanceFrame();
-        const double ms = 1000.0 * std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() / frames;
-        file << spacing << ',' << fluid << ',' << sim.scene.particles.size() << ',' << ms << ','
-             << static_cast<double>(sim.substeps - substepsBefore) / frames << '\n';
-        log("performance spacing " + formatValue(spacing) + " done");
+        std::ofstream file = openCsv("performance.csv",
+                                     "spacing,fluid_particles,total_particles,ms_per_frame,substeps_per_frame");
+        for (double spacing : {20.0, 14.0, 10.0, 7.0, 5.0})
+        {
+            SceneOptions options;
+            options.particleSpacing = spacing;
+            Simulation sim(makeDamBreakScene(windowWidth, windowHeight, options));
+            int fluid = 0;
+            for (const Particle &p : sim.scene.particles)
+                fluid += p.fixed ? 0 : 1;
+            for (int i = 0; i < 10; ++i)
+                sim.advanceFrame();
+            const long substepsBefore = sim.substeps;
+            const int frames = 30;
+            const auto start = std::chrono::steady_clock::now();
+            for (int i = 0; i < frames; ++i)
+                sim.advanceFrame();
+            const double ms = 1000.0 * std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() / frames;
+            file << spacing << ',' << fluid << ',' << sim.scene.particles.size() << ',' << ms << ','
+                 << static_cast<double>(sim.substeps - substepsBefore) / frames << '\n';
+            log("performance spacing " + formatValue(spacing) + " done");
+        }
     }
-}
 
-void runParallel(std::vector<std::function<void()>> &jobs)
-{
-    std::atomic<std::size_t> next{0};
-    const unsigned threadCount = std::max(1u, std::thread::hardware_concurrency());
-    std::vector<std::thread> threads;
-    for (unsigned t = 0; t < threadCount; ++t)
+    void runParallel(std::vector<std::function<void()>> &jobs)
     {
-        threads.emplace_back([&]()
-                             {
+        std::atomic<std::size_t> next{0};
+        const unsigned threadCount = std::max(1u, std::thread::hardware_concurrency());
+        std::vector<std::thread> threads;
+        for (unsigned t = 0; t < threadCount; ++t)
+        {
+            threads.emplace_back([&]()
+                                 {
             for (std::size_t job = next++; job < jobs.size(); job = next++)
                 jobs[job](); });
+        }
+        for (std::thread &thread : threads)
+            thread.join();
     }
-    for (std::thread &thread : threads)
-        thread.join();
 }
-} 
 
 int main(int argc, char **argv)
 {

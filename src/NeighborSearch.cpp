@@ -10,6 +10,7 @@ void NeighborSearch::setRadius(double newRadius)
     smoothingRadiusSquared = newRadius * newRadius;
 }
 
+// Build a neighbor list for every particle in the scene.
 void NeighborSearch::build(const std::vector<Particle> &particles)
 {
     const std::size_t particleCount = particles.size();

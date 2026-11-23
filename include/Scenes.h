@@ -6,19 +6,20 @@
 #include "SPHSolver.h"
 
 // Physical setup shared by the test scenes.
-struct SceneParameters {
+struct SceneParameters
+{
     double smoothingRadius;
     double restDensity;
-    double stiffness; 
+    double stiffness;
     double viscosity;
     double gravity;
     double kernelSpacingRatio;
     bool mirrorBoundaryPressure;
 };
 
-
-struct SceneOptions {
-    double particleSpacing = 10.0;     // initial spacing 
+struct SceneOptions
+{
+    double particleSpacing = 10.0; // initial spacing
     double kernelSpacingRatio = SPHSolver::defaultKernelSpacingRatio;
     double stiffnessScale = 1.0;
     double restDensity = 300.0;
@@ -27,7 +28,8 @@ struct SceneOptions {
     bool mirrorBoundaryPressure = true;
 };
 
-struct Tank {
+struct Tank
+{
     double left;
     double top;
     double width;
@@ -35,7 +37,8 @@ struct Tank {
     bool closedTop;
 };
 
-struct Scene {
+struct Scene
+{
     std::string name;
     SceneParameters parameters;
     Tank tank;
@@ -44,8 +47,8 @@ struct Scene {
     std::vector<Particle> particles;
 };
 
-Scene makeDamBreakScene(double windowWidth, double windowHeight, const SceneOptions& options = SceneOptions());
+Scene makeDamBreakScene(double windowWidth, double windowHeight, const SceneOptions &options = SceneOptions());
 
-Scene makeHydrostaticScene(double windowWidth, double windowHeight, const SceneOptions& options = SceneOptions());
+Scene makeHydrostaticScene(double windowWidth, double windowHeight, const SceneOptions &options = SceneOptions());
 
-void applySceneParameters(SPHSolver& solver, const SceneParameters& parameters);
+void applySceneParameters(SPHSolver &solver, const SceneParameters &parameters);

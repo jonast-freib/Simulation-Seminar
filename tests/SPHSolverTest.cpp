@@ -14,7 +14,7 @@ int main()
     {
         particles.emplace_back(Vector2D(x * 5.0, 0.0), mass, true);
     }
-    
+
     const double collisionRadius = 0.5 * solver.getParticleSpacing();
     particles.emplace_back(Vector2D(0.0, 0.5 * collisionRadius), mass, false);
     particles.back().velocity.y = -1.0;

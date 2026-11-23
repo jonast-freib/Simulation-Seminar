@@ -15,7 +15,6 @@ int main()
     const unsigned int windowWidth = 1700;
     const unsigned int windowHeight = 900;
 
-
     constexpr double frameTime = 1.0 / 60.0;
 
     Renderer renderer(windowWidth, windowHeight, "SPH Fluid Solver", particleRadius);
@@ -61,7 +60,7 @@ int main()
         DamBreak,
         HydrostaticColumn
     };
-    SceneKind activeScene = SceneKind::DamBreak;
+    SceneKind activeScene = SceneKind::DamBreak; // default to dam break scene
     std::vector<Particle> particles;
     double simulationTime = 0.0;
 
@@ -92,7 +91,7 @@ int main()
 
     int frameCounter = 0;
     int substepsSinceReport = 0;
-    while (renderer.isOpen())//main loop
+    while (renderer.isOpen()) // main loop
     {
         renderer.handleEvents();
 
@@ -150,7 +149,7 @@ int main()
             frameCounter = 0;
             substepsSinceReport = 0;
         }
-
+        // Advance the simulation by one frame time, which may involve multiple substeps.
         substepsSinceReport += sphSolver.advance(particles, frameTime);
         simulationTime += frameTime;
 

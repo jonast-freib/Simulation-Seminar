@@ -9,7 +9,7 @@ Renderer::Renderer(unsigned int width, unsigned int height, const std::string &t
     : window(sf::VideoMode(sf::Vector2u(width, height)), title), particleBuffer(sf::PrimitiveType::Triangles, sf::VertexBuffer::Usage::Stream), particleVertices(), particleRadius(particleRadius)
 {
     createParticleTexture();
-
+    // Attempt to load a font for slider and button labels
     if (!font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"))
     {
         if (!font.openFromFile("/usr/share/fonts/truetype/freefont/FreeSans.ttf"))
@@ -190,6 +190,7 @@ void Renderer::drawParticles(const std::vector<Particle> &particles)
             smoothedPressure[i] += blend * (particles[i].pressure - smoothedPressure[i]);
     }
 
+    // Helper function to convert pressure to color
     auto pressureToColor = [&](std::size_t index, const Particle &particle) -> sf::Color
     {
         if (particle.fixed)

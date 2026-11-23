@@ -4,28 +4,30 @@
 #include <vector>
 #include "Particle.h"
 
-class Renderer {
+class Renderer
+{
 public:
-    Renderer(unsigned int width, unsigned int height, const std::string& title, float particleRadius = 1.f);
+    Renderer(unsigned int width, unsigned int height, const std::string &title, float particleRadius = 1.f);
     bool isOpen() const;
     void handleEvents();
     void clear();
-    void drawParticles(const std::vector<Particle>& particles);
+    void drawParticles(const std::vector<Particle> &particles);
     void setReferencePressure(double pressure);
     void resetColorSmoothing();
     void setColorByPressure(bool enabled);
     bool isColorByPressure() const;
     void display();
     // UI sliders
-    void addSlider(const std::string& name, float minValue, float maxValue, float initialValue, float x, float y, float width = 200.f);
+    void addSlider(const std::string &name, float minValue, float maxValue, float initialValue, float x, float y, float width = 200.f);
     float getSliderValue(std::size_t index) const;
     void setSliderValue(std::size_t index, float value);
 
     // UI buttons
-    void addButton(const std::string& name, float x, float y, float width = 80.f, float height = 28.f);
+    void addButton(const std::string &name, float x, float y, float width = 80.f, float height = 28.f);
     bool consumeButtonPress(std::size_t index);
 
 private:
+    // Helper function to create a texture for particles
     void createParticleTexture();
 
     sf::RenderWindow window;
@@ -36,9 +38,11 @@ private:
     double referencePressure = 0.0;
     std::vector<double> smoothedPressure;
     bool colorByPressure = true;
+    // Flag to indicate if the font is loaded
     sf::Font font;
     bool fontLoaded = false;
-    struct Slider {
+    struct Slider
+    {
         std::string name;
         float minValue;
         float maxValue;
@@ -48,7 +52,8 @@ private:
         // label text will be constructed at draw time (requires font)
         bool dragging = false;
         float width = 200.f;
-        void updateKnob() {
+        void updateKnob()
+        {
             const float t = (value - minValue) / (maxValue - minValue);
             const float trackLeft = track.getPosition().x;
             const float trackTop = track.getPosition().y;
@@ -59,7 +64,8 @@ private:
     };
     std::vector<Slider> sliders;
 
-    struct Button {
+    struct Button
+    {
         std::string name;
         sf::RectangleShape rect;
         bool pressed = false;
