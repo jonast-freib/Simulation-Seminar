@@ -92,7 +92,7 @@ int main()
 
     int frameCounter = 0;
     int substepsSinceReport = 0;
-    while (renderer.isOpen())
+    while (renderer.isOpen())//main loop
     {
         renderer.handleEvents();
 

@@ -96,7 +96,8 @@ $0.43$ with the prefactor 2 and $1.73$ with the prefactor $2(d+2) = 8$, where
 $d = 2$ is the dimensionality. The parameter $\nu$ is therefore a numerical
 viscosity. The effective kinematic shear viscosity is about $\nu/(d+2) = \nu/4$,
 i.e.\ about $150\,\mathrm{px^2/s}$ for the default $\nu = 600\,\mathrm{px^2/s}$.
-All values of $\nu$ in this paper refer to the parameter.
+All values of $\nu$ in this paper refer to the parameter and are given in
+$\mathrm{px^2/s}$. The unit is omitted from here on.
 
 \subsection{Boundary Handling}
 \label{sec:boundary}
@@ -121,8 +122,8 @@ is, however, not energy-consistent and the boundary particles enter $\rho_i$ onc
 the pressure acceleration twice, so energy is fed into the fluid near walls.
 With $\nu = 150$ a column initialised at rest did not settle but
 reached particle speeds of up to about $1400\,\mathrm{px/s}$
-(Section~\ref{sec:viscosity}). From $\nu = 500$ on, the viscosity removes this
-energy faster than it is fed in. $\nu = 600$ is used as the default to keep a
+(Section~\ref{sec:viscosity}). From $\nu = 500$ on, the viscosity keeps the energy in check.
+ $\nu = 600$ is used as the default to keep a
 margin above this limit (Section~\ref{sec:viscosity}). A residual
 motion along the walls remains (Section~\ref{sec:boundary-results}).
 

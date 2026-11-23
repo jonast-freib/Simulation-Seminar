@@ -51,7 +51,7 @@ The solver components are covered by unit tests that run with CTest:
 
 Figure~\ref{fig:hydro-pressure} compares the particle pressures of the settled
 column with the hydrostatic solution $p = \rho_0 g d$. Instantaneous pressures
-scatter around the solution with a mean deviation of about $12\,\%$ of
+scatter around the solution with a mean deviation of about $11.5\,\%$ of
 $\rho_0 g H$. Averaged over $2\,\mathrm{s}$, the deviation shrinks to $3\,\%$,
 and the mean pressure below the surface layer matches the hydrostatic value to
 within $1.3\,\%$. The instantaneous scatter is therefore not a bias but noise.
@@ -67,7 +67,7 @@ the maximum density error settles at a mean of $0.69\,\%$ over
 $t = 8$--$10\,\mathrm{s}$ (peak $0.92\,\%$), close to the estimate
 $\Delta\rho/\rho_0 \approx \rho_0 g H/(7k) = 0.5\,\%$ for the compression at the
 bottom of the column. The mean density error has not fully converged, it
-still rises from $0.12\,\%$ at $t = 7\,\mathrm{s}$ to $0.20\,\%$ at
+still rises from $0.147\,\%$ at $t = 7\,\mathrm{s}$ to $0.20\,\%$ at
 $t = 10\,\mathrm{s}$. The kinetic energy, however, does not
 decay to zero but levels off at a mean of about $21\,\mathrm{px^2/s^2}$, with
 maximum speeds around $28\,\mathrm{px/s}$. This residual motion is caused by the
@@ -144,7 +144,7 @@ shifted every record so that $T_\mathrm{MM} = 1.19$ at $Z/a = 1.44$. The
 comparison therefore holds only up to a small time shift. Up to
 $Z/a \approx 2.6$ the simulated front is ahead of the experiment by $0.05$ to
 $0.14$ in $T$, and from $Z/a = 2.78$ up to the far wall both agree to within
-$0.03$.
+$0.05$.
 Until the impact on the right wall the maximum density error stays below
 $2.7\,\%$ and the flow speed below $0.12$ times the pressure-wave speed
 $\sqrt{7k/\rho_0}$, slightly above the intended $0.1$. At the impact the flow is
@@ -197,14 +197,14 @@ factor of about 65, the frame-to-frame change reaches $75\,\%$, and the density
 error rises again to $9.6\,\%$. The front position of the dam break
 is insensitive to $k$, at $T = 1.5$, $Z/a$ differs by only about $2\,\%$
 between $k_\mathrm{ref}/16$ and $4\,k_\mathrm{ref}$.
-
+\clearpage
 \subsection{Viscosity}
 \label{sec:viscosity}
 
 \begin{figure}[tp]
     \centering
     \includegraphics{figures/sweep_viscosity.pdf}
-    \caption{Influence of the kinematic viscosity $\nu$: (a) mean kinetic energy
+    \caption{Influence of the viscosity parameter $\nu$: (a) mean kinetic energy
     per unit mass of the hydrostatic column, (b) front position of the dam
     break.}
     \label{fig:sweep-visc}
@@ -338,7 +338,7 @@ Three further limitations remain. First, the all-pairs neighbour search is
 expensive (Table~\ref{tab:performance}). The default dam break with 800 fluid
 particles already needs $20\,\mathrm{ms}$ per frame on one CPU core, about
 $20\,\%$ more than the $16.7\,\mathrm{ms}$ available at $60\,\mathrm{Hz}$. Each
-doubling of the fluid particle number makes a frame $3.3$ to $4$ times more
+doubling of the fluid particle number makes a frame $3.4$ to $4$ times more
 expensive. The cost of a substep grows with the square of the total particle
 number, which rises only by a factor of $1.6$ to $1.75$ per doubling because the
 number of wall particles grows with $1/\Delta x$ instead of $1/\Delta x^2$.
