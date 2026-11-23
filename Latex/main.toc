@@ -9,15 +9,15 @@
 \contentsline {subsection}{\numberline {3.5}Time Integration}{6}{subsection.3.5}%
 \contentsline {subsection}{\numberline {3.6}Neighbour Search}{6}{subsection.3.6}%
 \contentsline {subsection}{\numberline {3.7}Software Structure}{6}{subsection.3.7}%
-\contentsline {subsection}{\numberline {3.8}Experimental Setup}{7}{subsection.3.8}%
-\contentsline {section}{\numberline {4}Results}{8}{section.4}%
-\contentsline {subsection}{\numberline {4.1}Correctness Tests}{8}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}Hydrostatic Column}{8}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}Boundary Handling}{10}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}Dam Break}{11}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Stiffness Coefficient}{13}{subsection.4.5}%
-\contentsline {subsection}{\numberline {4.6}Viscosity}{13}{subsection.4.6}%
-\contentsline {subsection}{\numberline {4.7}Kernel Support and Pairing Instability}{14}{subsection.4.7}%
-\contentsline {subsection}{\numberline {4.8}Density Fields}{15}{subsection.4.8}%
-\contentsline {subsection}{\numberline {4.9}Discussion}{15}{subsection.4.9}%
-\contentsline {section}{\numberline {5}Conclusion}{17}{section.5}%
+\contentsline {subsection}{\numberline {3.8}Experimental Setup}{8}{subsection.3.8}%
+\contentsline {section}{\numberline {4}Results}{9}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Correctness Tests}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Hydrostatic Column}{9}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Boundary Handling}{11}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Dam Break}{12}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Stiffness Coefficient}{14}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Viscosity}{14}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}Kernel Support and Pairing Instability}{16}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}Density Fields}{17}{subsection.4.8}%
+\contentsline {subsection}{\numberline {4.9}Discussion}{17}{subsection.4.9}%
+\contentsline {section}{\numberline {5}Conclusion}{19}{section.5}%

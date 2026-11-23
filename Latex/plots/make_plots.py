@@ -38,6 +38,8 @@ SURFACE = "#ffffff"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 RED = "#e34948"
 NEUTRAL = "#f0efec"
+# Categorical slots 1-7 in fixed order (validated: CVD and normal-vision checks pass).
+CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6"]
 ORDINAL = ["#c3dbf8", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"]
 SEQUENTIAL = LinearSegmentedColormap.from_list(
     "seq_blue", ["#9ec5f4", "#6da7ec", "#3987e5", "#1c5cab", "#0d366b"])
@@ -170,6 +172,16 @@ def fig_dam_front(meta):
     T = np.linspace(0, 1.2, 50)
     ax.plot(T, 1 + 2 * n * T, color=AQUA, linestyle=":", linewidth=1.8,
             label=r"Ritter, $Z/a = 1 + 2nT$")
+    # Experiment of Martin & Moyce; their time T_MM = n t sqrt(g/a) is converted
+    # to T = T_MM / n. Only points up to the far wall are shown.
+    with open(DATA / "martin_moyce_n2.csv") as file:
+        rows = [line.split(",") for line in file if line[:1].isdigit()]
+    mm_T = np.array([float(r[0]) for r in rows]) / n
+    mm_Z = np.array([float(r[1]) for r in rows])
+    shown = mm_Z <= tank_limit
+    ax.plot(mm_T[shown], mm_Z[shown], linestyle="none", marker="o",
+            markersize=4, markerfacecolor="none", markeredgecolor=ORANGE,
+            label="Martin & Moyce (experiment)")
     ax.axhline(tank_limit, color=INK_SECONDARY, linewidth=0.8)
     ax.text(0.05, tank_limit + 0.05, "far wall", color=INK_SECONDARY, fontsize=8, va="bottom")
     ax.set_xlabel(r"$T = t\sqrt{g/a}$")
@@ -250,10 +262,13 @@ def fig_sweep_stiffness():
 def fig_sweep_viscosity():
     sw = read_csv("sweep_visc.csv")
     nu = sw["value"]
+    # One distinct categorical colour per viscosity value.
+    assert len(nu) <= len(CATEGORICAL), "more sweep values than categorical colours"
+    colours = CATEGORICAL[:len(nu)]
     fig, axes = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 2.4))
 
     ax = axes[0]
-    for colour, value in zip(ORDINAL, nu):
+    for colour, value in zip(colours, nu):
         series = read_csv(f"sweep_hydro_visc_{value_label(value)}.csv")
         ax.semilogy(series["t"], series["mean_kinetic_energy"], color=colour,
                     label=rf"$\nu = {value_label(value)}$")
@@ -261,19 +276,20 @@ def fig_sweep_viscosity():
     ax.set_ylabel(r"mean $\frac{1}{2}|\boldsymbol{v}|^2$ [px$^2$/s$^2$]")
     ax.set_xlim(0, series["t"].max())
     ax.set_title("(a) hydrostatic column", loc="left")
-    ax.legend(loc="upper left", ncol=2)
-    ax.set_ylim(None, ax.get_ylim()[1] * 8)
 
     ax = axes[1]
-    for colour, value in zip(ORDINAL, nu):
+    for colour, value in zip(colours, nu):
         front = read_csv(f"sweep_front_visc_{value_label(value)}.csv")
         ax.plot(front["T"], front["Z_over_a"], color=colour, label=rf"$\nu = {value_label(value)}$")
     ax.set_xlabel(r"$T = t\sqrt{g/a}$")
     ax.set_ylabel(r"front position $Z/a$")
     ax.set_xlim(0, 2.4)
     ax.set_title("(b) dam-break front", loc="left")
-    ax.legend(loc="upper left")
     fig.tight_layout(w_pad=1.5)
+    # One shared legend below both panels (same colours in both).
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=7,
+               frameon=False, handlelength=1.2, columnspacing=1.0)
     save(fig, "sweep_viscosity.pdf")
 
 

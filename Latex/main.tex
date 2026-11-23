@@ -28,12 +28,13 @@
 \hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
 \lstset{basicstyle=\ttfamily\small, frame=single, breaklines=true}
 
-\title{A Two-Dimensional Smoothed Particle Hydrodynamics Solver}
+\title{Two-Dimensional Smoothed Particle Hydrodynamics Solver}
 \author{Jonas Turek}
 \date{\today}
 
 \begin{document}
 
+\hypersetup{pageanchor=false}
 \begin{titlepage}
   \centering
   \vspace*{2cm}
@@ -50,6 +51,7 @@
   \vfill
   {\large \today\par}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 
 \vspace*{\fill}
 \renewcommand{\abstractname}{\Large Abstract\vspace{0.3cm}}
@@ -63,12 +65,15 @@ mirrored pressure. The solver is evaluated on a hydrostatic column and a dam
 break. Parameter studies quantify how the stiffness coefficient, the viscosity,
 and the ratio of smoothing length to particle spacing affect compressibility,
 pressure noise, cost, and particle ordering. With the stiffness chosen so that
-pressure waves are ten times faster than the free-fall speed, the settled column
-stays within $0.7\,\%$ of the rest density and matches the hydrostatic pressure
-to within $3\,\%$ when averaged over time, and the dam break stays below
-$3\,\%$ density error until the wall impact. The mirrored boundary pressure
-requires a viscosity of $\nu = 600\,\mathrm{px^2/s}$ for stability and is the
-main source of pressure noise. The solver is implemented in C++17 and uses SFML for visualisation.
+pressure waves are ten times faster than the free-fall speed, the maximum
+density error of the settled column averages $0.7\,\%$ and its time-averaged
+pressure matches the hydrostatic solution to within $3\,\%$. The dam break stays
+below $3\,\%$ density error until the wall impact, and its front agrees with the
+experiment of Martin and Moyce to within $0.14$ in dimensionless time. The
+mirrored boundary pressure feeds energy into the fluid, so the column only stays
+stable from a viscosity parameter of \mbox{$\nu = 500\,\mathrm{px^2/s}$} on
+(default \mbox{$600\,\mathrm{px^2/s}$}). The mirroring is also the main source of
+temporal pressure fluctuations. The solver is implemented in C++17 and uses SFML for visualisation.
 \end{abstract}
 \vspace*{\fill}
 \newpage

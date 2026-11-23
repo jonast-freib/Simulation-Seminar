@@ -1,16 +1,16 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
 
 \bibitem{becker2007}
 Markus Becker and Matthias Teschner.
 \newblock Weakly compressible {SPH} for free surface flows.
 \newblock In {\em Proceedings of the 2007 ACM SIGGRAPH/Eurographics Symposium
-  on Computer Animation}, pages 209--217, 2007.
+  on Computer Animation}, pages 209--218, 2007.
 
 \bibitem{bender2015}
 Jan Bender and Dan Koschier.
 \newblock Divergence-free smoothed particle hydrodynamics.
 \newblock In {\em Proceedings of the 14th ACM SIGGRAPH/Eurographics Symposium
-  on Computer Animation}, pages 147--155, 2015.
+  on Computer Animation}, 2015.
 
 \bibitem{dehnen2012}
 Walter Dehnen and Hossam Aly.
@@ -20,10 +20,18 @@ Walter Dehnen and Hossam Aly.
   425(2):1068--1082, 2012.
 
 \bibitem{ihmsen2014iisph}
-Markus Ihmsen et~al.
+Markus Ihmsen, Jens Cornelis, Barbara Solenthaler, Christopher Horvath, and
+  Matthias Teschner.
 \newblock Implicit incompressible {SPH}.
 \newblock {\em IEEE Transactions on Visualization and Computer Graphics},
   20(3):426--435, 2014.
+
+\bibitem{martin1952}
+J.~C. Martin and W.~J. Moyce.
+\newblock Part {IV}. an experimental study of the collapse of liquid columns on
+  a rigid horizontal plane.
+\newblock {\em Philosophical Transactions of the Royal Society of London.
+  Series A}, 244(882):312--324, 1952.
 
 \bibitem{monaghan1992}
 Joseph~J. Monaghan.
@@ -42,9 +50,9 @@ A.~Ritter.
   1892.
 
 \bibitem{solenthaler2009}
-Barbara Solenthaler.
+Barbara Solenthaler and Renato Pajarola.
 \newblock Predictive-corrective incompressible {SPH}.
-\newblock {\em ACM Transactions on Graphics}, 28, 2009.
+\newblock {\em ACM Transactions on Graphics}, 28(3):40:1--40:6, 2009.
 
 \bibitem{teschner_notes}
 Matthias Teschner.

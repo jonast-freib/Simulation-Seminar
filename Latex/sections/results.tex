@@ -63,16 +63,17 @@ average out over the $2\,\mathrm{s}$ window.
 Figure~\ref{fig:hydro-settling} shows how the column settles. The particles
 start on a grid at exactly $\rho_0$ and therefore without pressure, so the
 column first falls slightly and then oscillates. After about $6\,\mathrm{s}$
-the maximum density error settles at $0.69\,\%$ (average over
-$t = 8$--$10\,\mathrm{s}$), close to the estimate
+the maximum density error settles at a mean of $0.69\,\%$ over
+$t = 8$--$10\,\mathrm{s}$ (peak $0.92\,\%$), close to the estimate
 $\Delta\rho/\rho_0 \approx \rho_0 g H/(7k) = 0.5\,\%$ for the compression at the
 bottom of the column. The mean density error has not fully converged, it
 still rises from $0.12\,\%$ at $t = 7\,\mathrm{s}$ to $0.20\,\%$ at
 $t = 10\,\mathrm{s}$. The kinetic energy, however, does not
 decay to zero but levels off at a mean of about $21\,\mathrm{px^2/s^2}$, with
-maximum speeds around $28\,\mathrm{px/s}$; this residual motion is caused by the
-boundary handling (\ref{sec:boundary-results}). The adaptive time step settles at
-$\Delta t \approx 1.25\times10^{-3}\,\mathrm{s}$, i.e.\ 13 substeps per frame.
+maximum speeds around $28\,\mathrm{px/s}$. This residual motion is caused by the
+boundary handling (Section~\ref{sec:boundary-results}). The CFL condition limits
+the time step to $0.4\,h/(\sqrt{7k/\rho_0} + \lVert\boldsymbol{v}^\mathrm{max}\rVert)
+\approx 1.29\times10^{-3}\,\mathrm{s}$, so each frame takes 13 substeps.
 
 \subsection{Boundary Handling}
 \label{sec:boundary-results}
@@ -92,33 +93,36 @@ Figure~\ref{fig:boundary}a compares the mirrored boundary pressure
 $p_{i_b} = p_i$ with the simplest alternative, $p_{i_b} = 0$, in the settled
 column. Without mirroring, a boundary sample only contributes $p_i/\rho_i^2$
 to the pressure acceleration, half of what a fluid neighbour contributes. The
-bottom fluid layer therefore has to compress until its pressure is
-$2.4\,\rho_0 g H$ instead of $\rho_0 g H$. It is pressed down to about $2\,\mathrm{px}$
+bottom fluid layer therefore has to compress until its time-averaged pressure
+is $2.1\,\rho_0 g H$, about twice the hydrostatic value $\rho_0 g H$. It is pressed down to about $2\,\mathrm{px}$
 above the floor, while the second layer stays at about $15\,\mathrm{px}$ as with
 mirroring, leaving a visible gap of about $13\,\mathrm{px}$ instead of
 $\Delta x = 10\,\mathrm{px}$. With mirroring the bottom layer carries
-$1.05\,\rho_0 g H$ and the particle heights are distributed without a gap. The
-time-averaged pressure error of the column drops from $9.2\,\%$ to $2.9\,\%$.
+$1.00\,\rho_0 g H$ and the particle heights are distributed without a gap. The
+time-averaged pressure error of the column drops from $9.3\,\%$ to $3.0\,\%$.
 
 Mirroring has a price. Because boundary particles enter the density once but the
 pressure acceleration twice, mirroring is not energy-consistent and feeds energy
-into the fluid near walls. The frame-to-frame pressure noise rises from $3\,\%$
-to $14\,\%$ of $\rho_0 g H$, and the column never comes fully to rest. Its
-kinetic energy levels are off 
-about $22\,\mathrm{px^2/s^2}$, whereas without mirroring it decays steadily to
-$6\,\mathrm{px^2/s^2}$ within $7\,\mathrm{s}$.
+into the fluid near walls. The mean frame-to-frame pressure change rises from $2.3\,\%$
+to $11.6\,\%$ of $\rho_0 g H$, and the column never comes fully to rest. Its
+kinetic energy levels off at about $21\,\mathrm{px^2/s^2}$, whereas without
+mirroring it decays to a mean of about $3\,\mathrm{px^2/s^2}$ over
+$t = 8$--$10\,\mathrm{s}$.
 Figure~\ref{fig:boundary}b shows the mean drift of the particles over the last
-$2\,\mathrm{s}$: the fluid sinks along both walls at about $7\,\mathrm{px/s}$ and
+$2\,\mathrm{s}$ of the simulation. The fluid sinks along both walls at about $7\,\mathrm{px/s}$ and
 rises in the centre at about $3\,\mathrm{px/s}$, forming two slow vortices.
 
 \newpage
 \subsection{Dam Break}
+\label{sec:dam}
 
 \begin{figure}[t]
     \centering
     \includegraphics{figures/dam_front.pdf}
-    \caption{Front position of the dam break in dimensionless form
-    ($a$: initial column width, $n^2 = H/a = 2$).}
+    \caption{Front position of the dam break in dimensionless form, compared
+    with Ritter's shallow-water solution and the experiment of Martin and
+    Moyce~\cite{martin1952} ($a$: initial column width, $n^2 = H/a = 2$;
+    experimental times converted with $T = T_\mathrm{MM}/n$).}
     \label{fig:dam-front}
 \end{figure}
 
@@ -128,13 +132,26 @@ Fig.~\ref{fig:dam-front} in dimensionless form. The front reaches $Z/a = 1.81$ a
 $3.49$ at $T = 2$, and hits the opposite wall ($Z/a = 4$) at $T = 2.27$. After
 an initial acceleration phase the front moves at a nearly constant speed. The
 shallow-water solution of Ritter~\cite{ritter1892}, $Z/a = 1 + 2nT$, assumes
-that the front starts at full speed and bounds the motion from above.
+that the front starts at full speed and bounds the motion from above. At
+$T = 1$ it predicts $Z/a = 3.83$ instead of $1.81$. The experiment of Martin and
+Moyce~\cite{martin1952} for the same aspect ratio agrees much better. The
+experimental front positions are taken from Table~2 of Martin and
+Moyce~\cite{martin1952} (rectangular water column, $n^2 = 2$,
+$a = 2\tfrac{1}{4}\,\mathrm{in} = 5.7\,\mathrm{cm}$). Martin and Moyce give time as
+$T_\mathrm{MM} = n\,t\sqrt{g/a}$, which is converted here with
+$T = T_\mathrm{MM}/n$. Because the instant of release was not measured, they
+shifted every record so that $T_\mathrm{MM} = 1.19$ at $Z/a = 1.44$. The
+comparison therefore holds only up to a small time shift. Up to
+$Z/a \approx 2.6$ the simulated front is ahead of the experiment by $0.05$ to
+$0.14$ in $T$, and from $Z/a = 2.78$ up to the far wall both agree to within
+$0.03$.
 Until the impact on the right wall the maximum density error stays below
 $2.7\,\%$ and the flow speed below $0.12$ times the pressure-wave speed
 $\sqrt{7k/\rho_0}$, slightly above the intended $0.1$. At the impact the flow is
 deflected upwards and the splash reaches $0.28$ times the pressure-wave speed,
-almost three times the free-fall speed $\sqrt{2gH}$; the density error peaks at $10\,\%$ for
-a few frames. A stiffness chosen from the free-fall speed is therefore adequate
+almost three times the free-fall speed $\sqrt{2gH}$. The density error peaks at
+$10\,\%$ and exceeds $5\,\%$ in 16 frames between $T = 2.3$ and $3.6$ while the
+splash falls back. A stiffness chosen from the free-fall speed is therefore adequate
 for the collapse itself but marginal for the impact.
 
 \begin{figure}[p]
@@ -162,19 +179,22 @@ for the collapse itself but marginal for the impact.
 The stiffness coefficient trades compressibility against cost
 (Fig.~\ref{fig:sweep-k}). Increasing $k$ from $k_\mathrm{ref}/16$ to
 $k_\mathrm{ref}$ reduces the density error of the hydrostatic column from
-$10.2\,\%$ via $3.0\,\%$ to $0.98\,\%$ (maximum over the measurement window).
-This follows the $1/k$ scaling of the estimate $\rho_0 gH/(7k)$ but lies $1.3$
-to $2$ times above it. The excess grows with $k$, like the pressure noise.
+$9.1\,\%$ via $2.9\,\%$ to $0.92\,\%$ (maximum over $t = 8$--$10\,\mathrm{s}$).
+This follows the $1/k$ scaling of the estimate $\rho_0 gH/(7k)$ but lies $1.1$
+to $1.8$ times above it. The excess grows with $k$, like the pressure noise.
 In the dam break the time-averaged peak density error decreases only with
-about $1/\sqrt{k}$ (from $8.6\,\%$ to $0.96\,\%$ over the full range). At the impacts at the wall and in
-the splash the values peak. The pressure jump scales with $\rho_0 c v$ instead of
-$\rho_0 v^2$. The density error then scales with $v/c \propto 1/\sqrt{k}$. The
-number of substeps grows roughly with $\sqrt{k}$ (from 5 to 27 per frame) since the CFL
-condition with the pressure-wave speed dominates. A stiffer fluid is also
-noisier and the frame-to-frame pressure change grows from $1.7\,\%$ to $87\,\%$ of
-$\rho_0 g H$. At $4\,k_\mathrm{ref}$ the energy fed in by the mirrored boundary
-pressure is no longer removed by the viscosity, so the column does not settle and
-its density error rises again to $7.6\,\%$. The front position of the dam break
+about $1/\sqrt{k}$ (from $8.6\,\%$ to $0.96\,\%$ over the full range). This
+average is dominated by the wall impact and the splash, where the pressure jump
+scales with $\rho_0 c v$ instead of $\rho_0 v^2$, with $c = \sqrt{7k/\rho_0}$, so
+that the density error scales with $v/c \propto 1/\sqrt{k}$. The
+number of substeps grows roughly with $\sqrt{k}$ since the CFL condition with
+the pressure-wave speed dominates (from 5 to 27 per frame). A stiffer fluid
+is also noisier, the frame-to-frame pressure change grows from $1.3\,\%$ of
+$\rho_0 g H$ at $k_\mathrm{ref}/16$ to $11.6\,\%$ at $k_\mathrm{ref}$. At
+$4\,k_\mathrm{ref}$ the energy fed in by the mirrored boundary pressure is no
+longer removed by the viscosity. The kinetic energy of the column grows by a
+factor of about 65, the frame-to-frame change reaches $75\,\%$, and the density
+error rises again to $9.6\,\%$. The front position of the dam break
 is insensitive to $k$, at $T = 1.5$, $Z/a$ differs by only about $2\,\%$
 between $k_\mathrm{ref}/16$ and $4\,k_\mathrm{ref}$.
 
@@ -191,19 +211,30 @@ between $k_\mathrm{ref}/16$ and $4\,k_\mathrm{ref}$.
 \end{figure}
 
 With mirrored boundary pressures, the viscosity has a significant impact on whether the fluid comes
-to rest at all (Fig.~\ref{fig:sweep-visc}a). With $\nu = 150$ and $300$ the
-kinetic energy of the hydrostatic column grows by about two orders of magnitude
-within $7\,\mathrm{s}$. At $\nu = 150$ particles reach speeds of up to
-$1250\,\mathrm{px/s}$, and the time-averaged pressure error is $28\,\%$
-($15\,\%$ at $\nu = 300$). From $\nu = 600$
-on the energy stays bounded and levels off at about $22\,\mathrm{px^2/s^2}$
-($\nu = 600$), $14$ ($\nu = 1000$) and $4$ ($\nu = 2000$). The time-averaged
-pressure error drops to $2.9$, $2.7$ and $1.3\,\%$. The price is a slower flow:
+to rest at all (Fig.~\ref{fig:sweep-visc}a). With $\nu = 150$, $300$ and $400$
+the kinetic energy of the hydrostatic column grows by a factor of $370$, $130$
+and $80$ within $10\,\mathrm{s}$. At $\nu = 150$ particles reach speeds of up to
+$1400\,\mathrm{px/s}$, and the time-averaged pressure error is $26\,\%$
+($20\,\%$ at $\nu = 300$, $16\,\%$ at $\nu = 400$). From $\nu = 500$ on the
+energy stays bounded. At $\nu = 500$ it is still slowly decaying at
+$t = 10\,\mathrm{s}$ (mean $26\,\mathrm{px^2/s^2}$ over $t = 8$--$10\,\mathrm{s}$).
+For larger viscosities it levels off at about $21\,\mathrm{px^2/s^2}$
+($\nu = 600$), $10$ ($\nu = 1000$) and $3$ ($\nu = 2000$). The time-averaged
+pressure error drops to $2.9$, $3.0$, $3.6$ and $1.9\,\%$ for $\nu = 500$, $600$,
+$1000$ and $2000$. The stability limit therefore lies between $\nu = 400$
+and $500$. The price is a slower flow,
+also because the viscous term acts at the no-slip floor. In the dam break, the front position is affected by the viscosity,
 at $T = 1.5$ the dam-break front has reached $Z/a = 2.91$ for $\nu = 150$ but
 only $2.46$ for $\nu = 2000$ (Fig.~\ref{fig:sweep-visc}b). The default
-$\nu = 600$ is the smallest of the tested values that keeps the fluid stable.
-Since the mirrored boundary pressure is the main source of pressure noise, a
-lower viscosity would be possible with a more energy consistent boundary treatment.
+$\nu = 600$ (effective shear viscosity about $150\,\mathrm{px^2/s}$,
+Section~\ref{sec:accelerations}) keeps a margin of $20\,\%$ above the smallest
+stable tested value $\nu = 500$. The margin costs little flow speed. At
+$T = 1.5$ the front is at $Z/a = 2.62$ for $\nu = 500$ and $2.60$ for
+$\nu = 600$. It does not cover every setting. At $4\,k_\mathrm{ref}$
+the column becomes unstable even with $\nu = 600$. Since the
+energy that the viscosity has to remove is fed in by the mirrored boundary
+pressure, a lower viscosity would be possible with a more energy-consistent
+boundary treatment.
 
 \newpage
 \subsection{Kernel Support and Pairing Instability}
@@ -221,23 +252,25 @@ lower viscosity would be possible with a more energy consistent boundary treatme
 Figure~\ref{fig:pairing} shows the bottom of the settled column for different
 ratios $h/\Delta x$. For $h = \Delta x$ (12 neighbours) the particles leave
 the initial square grid for an irregular arrangement, and the column is
-the quietest of all ratios: the frame-to-frame pressure change is $7\,\%$ of $\rho_0 g H$ and the
-maximum density error $0.8\,\%$. Because the smaller $h$ shortens the CFL
-time step, the dam break needs $18.9$ substeps per frame instead of $14.7$ at
-$1.3$. For $1.2$ and $1.3$ (18 and 20 neighbours) the particles
-are evenly distributed and the density is uniform. At $1.6$ (32 neighbours)
-the arrangement becomes irregular again, and at $2.0$ (49 neighbours) particles clump
-together and leave voids, with local density errors between $-4$ and $+3\,\%$. This is
-the pairing
-instability of the cubic spline \cite{dehnen2012}. The clumping also makes the
-fluid restless: at $h/\Delta x = 2.0$ the frame-to-frame pressure change is
-$49\,\%$ of $\rho_0 g H$, compared with $14\,\%$ at $1.3$, and the maximum
-density error of the column rises from $1.0\,\%$ to $3.6\,\%$. The dam-break
-front is only slightly slower for larger ratios ($Z/a = 2.63$ at $1.0$ and
-$2.51$ at $2.0$ for $T = 1.5$).
-The pairing instability is therefore not only a problem for the density field but also for the flow speed and the pressure noise. The default $h/\Delta x = 1.3$
-is a compromise between cost and stability, and it is the largest ratio that
-keeps the particles evenly distributed.
+the quietest of all ratios. The frame-to-frame pressure change is $5.9\,\%$ of
+$\rho_0 g H$ and the maximum density error $0.79\,\%$. Because the smaller $h$
+shortens the CFL time step, the dam break needs $18.9$ substeps per frame
+instead of $14.7$ at $1.3$. In each substep, however, it processes fewer neighbours
+(12 instead of 20). For $1.2$ and $1.3$ (18 and 20 neighbours) the particles
+are evenly distributed and the density is uniform. At $1.6$ (33 neighbours)
+the arrangement becomes irregular again and the column gets noisier
+($14.9\,\%$ frame-to-frame change, compared with $11.6\,\%$ at $1.3$). At $2.0$
+(47 neighbours) particles clump together and leave voids with density deficits
+of more than $10\,\%$. This is the pairing instability of the cubic spline
+\cite{dehnen2012}. At this ratio the column no longer settles and its kinetic
+energy grows by a factor of about 50, particles reach $930\,\mathrm{px/s}$, the
+frame-to-frame pressure change is $82\,\%$ of $\rho_0 g H$, and the maximum
+density error rises to $9.0\,\%$. The short dam-break collapse is hardly
+affected ($Z/a = 2.63$ at $1.0$ and $2.51$ at $2.0$ for $T = 1.5$), so the
+pairing instability is mainly a problem for the density field, the pressure
+noise and the long-term stability. The default $h/\Delta x = 1.3$ gives up the
+lower noise of $h = \Delta x$ for $22\,\%$ fewer substeps, and it is the largest
+tested ratio that keeps the particles evenly distributed.
 
 \newpage
 \subsection{Density Fields}
@@ -254,7 +287,7 @@ keeps the particles evenly distributed.
 
 Figure~\ref{fig:density-grid} compares the density error of the dam break at
 $T = 2$ for all parameter variations. With $k = k_\mathrm{ref}/16$ the lower
-part of the fluid is compressed by several percent; at $k_\mathrm{ref}$ the
+part of the fluid is compressed by several percent. At $k_\mathrm{ref}$ the
 bulk is within about $\pm1\,\%$ of $\rho_0$. In all runs the free surface shows
 a density deficit, because the kernel support of surface particles is only
 partially filled. Apart from the noisier field of the unstable $\nu = 150$,
@@ -266,7 +299,8 @@ slightly.
 \begin{table}[tp]
     \centering
     \caption{Cost of the dam break for different particle spacings: wall-clock
-    time per $1/60\,\mathrm{s}$ frame on one CPU core, without rendering.}
+    time per $1/60\,\mathrm{s}$ frame on one CPU core, without rendering,
+    averaged over 30 frames early in the collapse.}
     \label{tab:performance}
     \begin{tabular}{rrrrr}
         \toprule
@@ -285,30 +319,35 @@ The SPH solver reproduces the hydrostatic
 pressure with a time-averaged accuracy of a few percent and keeps density
 errors at about one percent for the chosen stiffness. Its main weakness is
 pressure noise. Instantaneous particle pressures scatter by about $12\,\%$ of
-$\rho_0 g H$ even in the settled column. Most of this noise comes from the
-mirrored boundary pressure (frame-to-frame change $14\,\%$ instead of $3\,\%$
-without mirroring), and it is the reason why the interactive
-renderer colours particles by a per-particle moving average of the pressure.
+$\rho_0 g H$ around the hydrostatic solution even in the settled column. Without
+mirroring the scatter is even larger ($14\,\%$), but there it is mostly a bias of
+the bottom layer that does not average out ($9.3\,\%$ after time averaging).
+Mirroring removes the bias but makes the pressures fluctuate in time. The
+frame-to-frame change rises from $2.3\,\%$ to $11.6\,\%$. These fluctuations are
+the reason why the interactive renderer colours particles by a per-particle
+moving average of the pressure.
 
 The mirrored boundary pressure removes the gap between the
 first fluid layers and the wall, but it is not energy-consistent. Together with
 the stiff state equation it requires a comparatively large viscosity
-($\nu \ge 600$), which slows the flow, and it leaves residual motion along the
+($\nu \ge 500$, default $600$), which slows the flow, and it leaves residual motion along the
 walls. Extrapolating the pressure to the boundary particles, or solving for the pressure implicitly (IISPH \cite{ihmsen2014iisph},
 DFSPH \cite{bender2015}), could reduce both the boundary artefacts and the pressure noise.
 
 Three further limitations remain. First, the all-pairs neighbour search is
 expensive (Table~\ref{tab:performance}). The default dam break with 800 fluid
-particles already needs $20\,\mathrm{ms}$ per frame on one CPU core, slightly
-more than the $16.7\,\mathrm{ms}$ available at $60\,\mathrm{Hz}$. Each doubling
-of the fluid particle number makes a frame about four times more expensive.
-The cost of a substep grows with the square of the total particle number, and
-since the time step shrinks with the particle spacing, a frame also needs about
-$1.4$ times as many substeps. Second, the projection that pushes fluid particles
+particles already needs $20\,\mathrm{ms}$ per frame on one CPU core, about
+$20\,\%$ more than the $16.7\,\mathrm{ms}$ available at $60\,\mathrm{Hz}$. Each
+doubling of the fluid particle number makes a frame $3.3$ to $4$ times more
+expensive. The cost of a substep grows with the square of the total particle
+number, which rises only by a factor of $1.6$ to $1.75$ per doubling because the
+number of wall particles grows with $1/\Delta x$ instead of $1/\Delta x^2$.
+Since the time step shrinks with the particle spacing, a frame also needs about
+$1.4$ times as many substeps, which gives $1.6^2 \cdot 1.4 \approx 3.6$. Second, the projection that pushes fluid particles
 out of the walls (Section~\ref{sec:boundary}) is a safety net outside the SPH
 formulation. Third, the stiffness is chosen from the free-fall speed, which
 underestimates the flow speeds at the wall impact of the dam break, where the
-density error briefly reaches $10\,\%$.
+density error reaches up to $10\,\%$.
 
 Taken together, most of these points trace back to the weakly compressible
 formulation. The stiffness that keeps the density error small also sets the

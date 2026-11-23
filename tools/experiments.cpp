@@ -348,7 +348,7 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
 
     {
         Simulation sim(makeHydrostaticScene(windowWidth, windowHeight, options));
-        const double settleTime = 5.0;
+        const double settleTime = 8.0; // same window as runHydrostatic (t = 8-10 s)
         const double measureTime = 2.0;
         std::ofstream series = openCsv("sweep_hydro_" + tag + ".csv",
                                        "t,mean_kinetic_energy,max_density_error,max_speed");
@@ -410,6 +410,9 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
             result.hydroMaxDensityError = std::max(result.hydroMaxDensityError, densityStats(sim).maxError);
         }
 
+        // Time-averaged pressure per particle, in units of rho0 g H.
+        std::ofstream averagedProfile = openCsv("profile_hydro_" + tag + ".csv",
+                                                "x,height,pressure_time_averaged");
         double averagedDeviation = 0.0;
         int fluidCount = 0;
         for (std::size_t i = 0; i < n; ++i)
@@ -418,6 +421,8 @@ SweepResult runSweepPoint(const std::string &parameter, double value, const Scen
                 continue;
             const double depth = depthSum[i] / frames;
             averagedDeviation += std::abs(pressureSum[i] / frames - sim.rho0() * sim.gravity() * depth) / scale;
+            averagedProfile << sim.xFromLeftWall(sim.scene.particles[i]) << ',' << surfaceHeight - depth << ','
+                            << pressureSum[i] / frames / scale << '\n';
             ++fluidCount;
         }
         result.hydroPressureDeviation = deviationSum / samples;
@@ -507,7 +512,7 @@ int main(int argc, char **argv)
     std::printf("Writing experiment data to %s\n", outputDirectory.c_str());
 
     const std::vector<double> stiffnessScales = {0.0625, 0.25, 1.0, 4.0};
-    const std::vector<double> viscosities = {150.0, 300.0, 600.0, 1000.0, 2000.0};
+    const std::vector<double> viscosities = {150.0, 300.0, 400.0, 500.0, 600.0, 1000.0, 2000.0};
     const std::vector<double> kernelRatios = {1.0, 1.2, 1.3, 1.6, 2.0};
 
     std::vector<SweepResult> kResults(stiffnessScales.size());

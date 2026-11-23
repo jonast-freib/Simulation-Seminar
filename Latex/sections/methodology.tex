@@ -50,10 +50,12 @@ pressure follows the Tait-type state equation of weakly compressible SPH
     p_i = \max\left(k\left(\left(\frac{\rho_i}{\rho_0}\right)^7 - 1\right), 0\right),
     \label{eq:state}
 \end{equation}
-with the rest density $\rho_0$ and the stiffness coefficient $k$. The exponent 7
-makes the fluid seven times stiffer near $\rho_0$ for the same $k$. The
-stiffness coefficient $k$ does not set the pressure, but the compressibility. A larger $k$ means less compression 
-and allows for a smaller time step. Pressure
+with the rest density $\rho_0$ and the stiffness coefficient $k$. Near $\rho_0$
+the exponent 7 makes the fluid seven times stiffer than a linear state equation
+$p = k(\rho/\rho_0 - 1)$ with the same $k$. The stiffness coefficient does not
+set the pressure level, which is fixed by the load (e.g.\ the weight of the
+fluid above), but how strongly the fluid has to be compressed to produce it. A
+larger $k$ means less compression but requires a smaller time step. Pressure
 waves travel at $\sqrt{\mathrm{d}p/\mathrm{d}\rho} = \sqrt{7k/\rho_0}$, and the
 relative density error scales with $(v/\sqrt{7k/\rho_0})^2$ for a flow speed $v$.
 Therefore $k$ was chosen such that pressure waves are ten times faster than the
@@ -65,25 +67,36 @@ height $H$:
 which targets density errors of about one percent.
 
 \subsection{Accelerations}
+\label{sec:accelerations}
 
 The acceleration is split into a pressure part and
 a non-pressure part,
 \begin{align}
-    \boldsymbol{a}_i^\mathrm{nonp} &= \nu \nabla^2 \boldsymbol{v}_i + \boldsymbol{g},
-    \qquad
-    \nabla^2 \boldsymbol{v}_i = d \sum_j \frac{m_j}{\rho_j}
-        \frac{\boldsymbol{v}_{ij}\cdot\boldsymbol{x}_{ij}}{\boldsymbol{x}_{ij}\cdot\boldsymbol{x}_{ij} + 0.01h^2}\,\nabla W_{ij},\\
+    \boldsymbol{a}_i^\mathrm{nonp} &= 2\nu \sum_j \frac{m_j}{\rho_j}
+        \frac{\boldsymbol{v}_{ij}\cdot\boldsymbol{x}_{ij}}{\boldsymbol{x}_{ij}\cdot\boldsymbol{x}_{ij} + 0.01h^2}\,\nabla W_{ij}
+        + \boldsymbol{g},\\
     \boldsymbol{a}_i^\mathrm{p} &= -\frac{1}{\rho_i}\nabla p_i
         = -\sum_{i_f} m_{i_f}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_f}}{\rho_{i_f}^2}\right)\nabla W_{i i_f}
           -\sum_{i_b} m_{i_b}\left(\frac{p_i}{\rho_i^2} + \frac{p_{i_b}}{\rho_{i_b}^2}\right)\nabla W_{i i_b},\\
     \boldsymbol{a}_i &= \boldsymbol{a}_i^\mathrm{nonp} + \boldsymbol{a}_i^\mathrm{p},
 \end{align}
 with $\boldsymbol{x}_{ij} = \boldsymbol{x}_i - \boldsymbol{x}_j$,
-$\boldsymbol{v}_{ij} = \boldsymbol{v}_i - \boldsymbol{v}_j$, the dimensionality
-$d = 2$, and the kinematic viscosity $\nu$ \cite{teschner_notes}. The Laplacian is
-approximated with the first kernel derivative because the second derivative is
-sensitive to particle disorder \cite{morris1997}. Besides modelling friction, the viscosity dampens
+$\boldsymbol{v}_{ij} = \boldsymbol{v}_i - \boldsymbol{v}_j$, and the viscosity
+parameter $\nu$ \cite{teschner_notes}. The viscous term approximates
+$\nu\nabla^2\boldsymbol{v}_i$ with the first kernel derivative because the second
+derivative is sensitive to particle disorder \cite{morris1997}. The sum runs over
+fluid and boundary neighbours. Boundary particles have zero velocity, so the
+walls act as no-slip walls. Besides modelling friction, the viscosity dampens
 the acoustic oscillations that a weakly compressible fluid carries.
+
+For this projected form of the Laplacian the prefactor~2 is too small.
+Evaluated on the initial grid ($h = 1.3\,\Delta x$) for the shear flow
+$\boldsymbol{v} = (y^2, 0)$ with $\nabla^2\boldsymbol{v} = (2, 0)$, the sum gives
+$0.43$ with the prefactor 2 and $1.73$ with the prefactor $2(d+2) = 8$, where
+$d = 2$ is the dimensionality. The parameter $\nu$ is therefore a numerical
+viscosity. The effective kinematic shear viscosity is about $\nu/(d+2) = \nu/4$,
+i.e.\ about $150\,\mathrm{px^2/s}$ for the default $\nu = 600\,\mathrm{px^2/s}$.
+All values of $\nu$ in this paper refer to the parameter.
 
 \subsection{Boundary Handling}
 \label{sec:boundary}
@@ -104,17 +117,17 @@ $p_{i_b} = p_i$ and $\rho_{i_b} = \rho_i$, so that the boundary term becomes
 \end{equation}
 Mirroring gives a fluid particle at the wall the full pressure support, so the
 first fluid layer carries the hydrostatic load without excess compression. It
-is, however, not energy-consistent: the boundary particles enter $\rho_i$ once but
-the pressure acceleration twice. In this setting, energy is fed into the
-fluid near walls because the boundary particles contribute to the pressure acceleration twice.
- With $\nu = 150$ a column initialised at rest did not settle but
-reached particle speeds of up to about $1250\,\mathrm{px/s}$
-(Section~\ref{sec:viscosity}). A viscosity of $\nu = 600$ removes this energy faster than it is fed in
-and is therefore used as the default (Section~\ref{sec:viscosity}). A residual
+is, however, not energy-consistent and the boundary particles enter $\rho_i$ once but
+the pressure acceleration twice, so energy is fed into the fluid near walls.
+With $\nu = 150$ a column initialised at rest did not settle but
+reached particle speeds of up to about $1400\,\mathrm{px/s}$
+(Section~\ref{sec:viscosity}). From $\nu = 500$ on, the viscosity removes this
+energy faster than it is fed in. $\nu = 600$ is used as the default to keep a
+margin above this limit (Section~\ref{sec:viscosity}). A residual
 motion along the walls remains (Section~\ref{sec:boundary-results}).
 
 As a safety precaution against penetration during violent impacts, a fluid particle
-that comes closer than $\Delta x/2$ to a boundary particel is projected back to
+that comes closer than $\Delta x/2$ to a boundary particle is projected back to
 that distance and its normal velocity is reflected with a restitution of $0.5$.
 
 
@@ -142,7 +155,7 @@ speed $\sqrt{7k/\rho_0}$ is added to the maximum particle speed. This keeps the
 step bounded by $\lambda h/\sqrt{7k/\rho_0}$ even for a fluid at rest, as in the
 hydrostatic test. The second limits the step by the largest particle acceleration
 \cite{monaghan1992,morris1997}. The third is the stability condition of
-explicit schemes for diffusion, applied to the viscous term, it becomes the
+explicit schemes for diffusion applied to the viscous term. It becomes the
 dominant constraint at high resolution or large viscosity \cite{morris1997}. Each rendered frame advances the simulation by
 $1/60\,\mathrm{s}$, split into as many substeps as these limits require.
 
@@ -154,8 +167,10 @@ $11\lVert \boldsymbol{v}^\mathrm{max}\rVert$, which gives
     \Delta t \approx \frac{0.4 \cdot 1.3\,\Delta x}{11\lVert \boldsymbol{v}^\mathrm{max}\rVert}
     \approx 0.05\,\frac{\Delta x}{\lVert \boldsymbol{v}^\mathrm{max}\rVert}.
 \end{equation*}
-This means that
-a particle moves at most about $5\,\%$ of the particle spacing per substep.
+This means that a particle moves about $5\,\%$ of the particle spacing per
+substep as long as the flow is not faster than the free-fall estimate. In the
+splash of the dam break ($\lVert \boldsymbol{v}^\mathrm{max}\rVert \approx
+0.28\sqrt{7k/\rho_0}$, Section~\ref{sec:dam}) this rises to about $11\,\%$.
 
 \subsection{Neighbour Search}
 
@@ -201,7 +216,7 @@ files, from which the figures are generated.
         Gravity & $g$ & $200\,\mathrm{px/s^2}$ \\
         Stiffness coefficient & $k$ & $k_\mathrm{ref} = 6.86\times10^{8}$ \\
         Pressure-wave speed & $\sqrt{7k/\rho_0}$ & $4000\,\mathrm{px/s}$ \\
-        Kinematic viscosity & $\nu$ & $600\,\mathrm{px^2/s}$ \\
+        Viscosity parameter & $\nu$ & $600\,\mathrm{px^2/s}$ (effective $\approx 150$) \\
         CFL factor & $\lambda$ & $0.4$ \\
         Fluid / boundary particles (column) & & $1200$ / $420$ \\
         Fluid / boundary particles (dam break) & & $800$ / $828$ \\
@@ -211,8 +226,11 @@ files, from which the figures are generated.
 \end{table}
 
 All quantities are given in screen units (pixels and seconds). Pressures,
-front positions and times are reported in dimensionless form ($p/\rho_0 g H$,
-$Z/a$, $T = t\sqrt{g/a}$). Two scenes are used
+dam-break front positions and dam-break times are reported in dimensionless form
+($p/\rho_0 g H$, $Z/a$, $T = t\sqrt{g/a}$). Since $g/a = 1\,\mathrm{s^{-2}}$ in
+the dam break, $T$ equals $t$ in seconds. All measurements in the settled
+hydrostatic column, including those of the parameter studies, are taken over
+$t = 8$--$10\,\mathrm{s}$. Two scenes are used
 (Table~\ref{tab:setup}):
 \begin{itemize}
     \item \textbf{Hydrostatic column.} An open tank of width $300\,\mathrm{px}$ is
